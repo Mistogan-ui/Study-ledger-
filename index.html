@@ -1,0 +1,3407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Study Ledger — University of the Visayas</title>
+
+<!-- PWA: lets classmates "Add to Home Screen" so it opens like a real app -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#7A0F1D">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Study Ledger">
+<meta name="mobile-web-app-capable" content="yes">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,500;8..60,600;8..60,700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --ink:#14213D;
+    --ink-soft:#5B5F6B;
+    --maroon:#7A0F1D;
+    --maroon-deep:#5A0B15;
+    --gold:#C9A227;
+    --gold-soft:#E6D28F;
+    --paper:#FAF6ED;
+    --paper-line:#E4DCC8;
+    --paper-line-strong:#D8CDAE;
+    --green:#2F6B3E;
+    --green-bg:#E4EFE3;
+    --amber:#B4711E;
+    --amber-bg:#F6E9D6;
+    --red:#A23B2E;
+    --red-bg:#F5E3DF;
+    --card-shadow: 0 1px 2px rgba(20,33,61,0.06), 0 4px 14px rgba(20,33,61,0.06);
+    --radius: 10px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--paper);}
+  body{
+    font-family:'Inter',sans-serif;
+    color:var(--ink);
+    background:
+      linear-gradient(var(--paper-line) 1px, transparent 1px);
+    background-size: 100% 34px;
+    background-attachment:local;
+  }
+  .wrap{max-width:1180px;margin:0 auto;padding:0 20px 60px;}
+
+  /* ---------- Header / cover ---------- */
+  .cover{
+    background: linear-gradient(135deg, var(--maroon) 0%, var(--maroon-deep) 100%);
+    border-radius: 0 0 18px 18px;
+    padding: 34px 34px 26px;
+    margin-bottom: 26px;
+    box-shadow: var(--card-shadow);
+    position:relative;
+    overflow:hidden;
+  }
+  .cover::after{
+    content:"";
+    position:absolute; left:0; right:0; bottom:0; height:6px;
+    background: linear-gradient(90deg, var(--gold), var(--gold-soft), var(--gold));
+  }
+  .cover .eyebrow{
+    font-family:'IBM Plex Mono', monospace;
+    letter-spacing:.12em;
+    text-transform:uppercase;
+    font-size:11.5px;
+    color: var(--gold-soft);
+    margin-bottom:8px;
+  }
+  .cover h1{
+    font-family:'Source Serif 4', serif;
+    font-weight:700;
+    font-size: clamp(24px, 3.4vw, 34px);
+    color:#fff;
+    margin:0 0 6px;
+    letter-spacing:.01em;
+  }
+  .cover p.sub{
+    margin:0;
+    color: rgba(255,255,255,.82);
+    font-size:14px;
+  }
+  .cover-actions{
+    position:absolute;
+    top:14px; right:16px;
+    display:flex; gap:8px;
+  }
+  .logout-btn{
+    background: rgba(255,255,255,.12);
+    color: var(--gold-soft);
+    border: 1px solid rgba(255,255,255,.25);
+    font-family:'Inter',sans-serif;
+    font-size:11px;
+    font-weight:600;
+    padding:5px 12px;
+    border-radius:20px;
+    cursor:pointer;
+    letter-spacing:.03em;
+    transition: background .15s ease, transform .15s ease, box-shadow .15s ease;
+  }
+  .logout-btn:hover{ background: rgba(255,255,255,.22); transform: translateY(-1px); box-shadow: 0 4px 10px rgba(0,0,0,.18); }
+  .logout-btn:active{ transform: translateY(0); }
+  #reset-btn{ color:#F5C7C0; border-color: rgba(245,199,192,.35); }
+
+  .lb-optin{
+    display:flex; align-items:center; gap:8px;
+    background: var(--paper); border:1px solid var(--paper-line-strong);
+    border-radius: var(--radius); padding:12px 16px; margin-bottom:16px;
+    font-size:12.5px; color: var(--ink-soft);
+  }
+  .lb-optin input{ width:16px; height:16px; accent-color: var(--maroon); flex-shrink:0; }
+  .lb-optin strong{ color: var(--ink); }
+
+  .info-grid{
+    display:grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap:14px;
+    margin-top:22px;
+  }
+  .info-field label{
+    display:block;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:10.5px;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+    color: var(--gold-soft);
+    margin-bottom:5px;
+  }
+  .info-field input{
+    width:100%;
+    background: rgba(255,255,255,.08);
+    border:none;
+    border-bottom: 2px solid var(--gold);
+    color:#fff;
+    font-family:'Inter',sans-serif;
+    font-size:14.5px;
+    font-weight:600;
+    padding:6px 4px;
+    outline:none;
+  }
+  .info-field input::placeholder{ color: rgba(255,255,255,.45); font-weight:400; }
+  .info-field input:focus{ background: rgba(255,255,255,.15); }
+
+  /* ---------- Tabs ---------- */
+  .tabs{
+    display:flex; gap:6px;
+    margin-bottom:22px;
+    border-bottom: 2px solid var(--paper-line-strong);
+    overflow-x:auto;
+    -webkit-overflow-scrolling:touch;
+    scrollbar-width:none;
+  }
+  .tabs::-webkit-scrollbar{ display:none; }
+  .tab-btn{
+    font-family:'Source Serif 4', serif;
+    font-weight:600;
+    font-size:15px;
+    color: var(--ink-soft);
+    background:none;
+    border:none;
+    padding:10px 18px;
+    cursor:pointer;
+    border-bottom: 3px solid transparent;
+    margin-bottom:-2px;
+    white-space:nowrap;
+    flex:0 0 auto;
+    transition: color .15s ease, border-color .15s ease;
+  }
+  .tab-btn:hover{ color: var(--maroon); }
+  .tab-btn.active{ color: var(--maroon); border-bottom-color: var(--maroon); }
+
+  .panel{ display:none; }
+  .panel.active{ display:block; animation: fadein .25s ease; }
+  @keyframes fadein{ from{opacity:0; transform:translateY(4px);} to{opacity:1; transform:none;} }
+
+  /* ---------- KPI strip (trial-balance style) ---------- */
+  .kpi-strip{
+    display:grid;
+    grid-template-columns: repeat(6,1fr);
+    background:#fff;
+    border:1px solid var(--paper-line-strong);
+    border-radius: var(--radius);
+    box-shadow: var(--card-shadow);
+    margin-bottom:22px;
+    overflow:hidden;
+  }
+  .kpi{
+    padding:16px 14px;
+    text-align:center;
+    border-right:1px solid var(--paper-line);
+    transition: background .2s ease, transform .18s ease;
+  }
+  .kpi:hover{ background: var(--paper); transform: translateY(-2px); }
+  .kpi:last-child{ border-right:none; }
+  .kpi .val{
+    font-family:'IBM Plex Mono', monospace;
+    font-weight:600;
+    font-size:26px;
+    color: var(--maroon);
+    line-height:1.1;
+    transition: color .2s ease;
+  }
+  .kpi .lbl{
+    font-size:11px;
+    text-transform:uppercase;
+    letter-spacing:.06em;
+    color: var(--ink-soft);
+    margin-top:4px;
+  }
+  .kpi.balance-eq{ background: var(--paper); }
+  .kpi.balance-eq .val{ color: var(--ink); font-size:15px; font-family:'IBM Plex Mono',monospace; font-weight:500;}
+  @keyframes streakPulse{
+    0%, 100%{ transform:scale(1); }
+    50%{ transform:scale(1.12); }
+  }
+  #kpi-streak-card.streak-live .val{ animation: streakPulse 1.8s ease-in-out infinite; }
+
+  /* ---------- Charts card ---------- */
+  .charts-row{
+    display:grid;
+    grid-template-columns: 1.5fr 1fr;
+    gap:18px;
+    margin-bottom:26px;
+  }
+  .card{
+    background:#fff;
+    border:1px solid var(--paper-line-strong);
+    border-radius: var(--radius);
+    box-shadow: var(--card-shadow);
+    padding:18px 20px;
+    transition: box-shadow .25s ease, transform .25s ease;
+  }
+  .card:hover{ box-shadow: 0 10px 26px rgba(20,15,10,.09); transform: translateY(-2px); }
+  .card h3{
+    font-family:'Source Serif 4', serif;
+    font-size:16px;
+    margin:0 0 12px;
+    color: var(--ink);
+    display:flex; align-items:center; gap:8px;
+  }
+  .card h3::before{
+    content:"";
+    width:5px; height:16px;
+    background: var(--gold);
+    border-radius:2px;
+    display:inline-block;
+  }
+  canvas{ max-width:100%; }
+
+  /* ---------- Ledger table (subject rows) ---------- */
+  /* ---------- Monthly calendar ---------- */
+  .cal-month-label{ font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--ink-soft); font-weight:400; margin-left:6px; }
+  .cal-stats-row{ display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin:12px 0 16px; }
+  .cal-stat{ background:var(--paper); border:1px solid var(--paper-line-strong); border-radius:8px; padding:10px 6px; text-align:center; transition: transform .18s ease, box-shadow .18s ease; }
+  .cal-stat:hover{ transform: translateY(-2px); box-shadow: 0 6px 14px rgba(20,15,10,.08); }
+  .cal-stat .v{ font-family:'IBM Plex Mono',monospace; font-weight:700; font-size:17px; color:var(--maroon); }
+  .cal-stat .l{ font-size:9.5px; text-transform:uppercase; letter-spacing:.04em; color:var(--ink-soft); margin-top:3px; }
+  .cal-grid{
+    display:grid; grid-template-columns:repeat(7,1fr); gap:5px;
+    max-width:360px; margin:0 auto;
+  }
+  .cal-dow{ font-family:'IBM Plex Mono',monospace; font-size:9.5px; color:var(--ink-soft); text-align:center; padding-bottom:2px; }
+  @keyframes calDayIn{
+    from{ opacity:0; transform:scale(.4); }
+    to{ opacity:1; transform:scale(1); }
+  }
+  .cal-day{
+    aspect-ratio:1; max-height:34px; border-radius:6px; display:flex; align-items:center; justify-content:center;
+    font-family:'IBM Plex Mono',monospace; font-size:10.5px; color:var(--ink-soft);
+    background: var(--paper-line); border:1px solid var(--paper-line-strong);
+    animation: calDayIn .35s cubic-bezier(.2,.9,.3,1.2) backwards;
+    transition: transform .15s ease, box-shadow .15s ease, background .2s ease;
+  }
+  .cal-day.empty{ background:transparent; border:none; animation:none; }
+  .cal-day.today{ box-shadow: inset 0 0 0 2px var(--gold); font-weight:700; }
+  .cal-day.lvl-1{ background:#E8D3D6; color:var(--maroon-deep); border-color:transparent; }
+  .cal-day.lvl-2{ background:#C97D82; color:#fff; border-color:transparent; }
+  .cal-day.lvl-3{ background:var(--maroon); color:#fff; border-color:transparent; }
+  .cal-day:not(.empty):hover{
+    transform: scale(1.18); box-shadow: 0 4px 12px rgba(20,15,10,.22); z-index:2; position:relative; cursor:default;
+  }
+  .cal-day.today:hover{ box-shadow: inset 0 0 0 2px var(--gold), 0 4px 12px rgba(20,15,10,.22); }
+  .cal-legend{ display:flex; align-items:center; gap:5px; justify-content:flex-end; margin-top:10px; font-family:'IBM Plex Mono',monospace; font-size:9.5px; color:var(--ink-soft); }
+  .cal-swatch{ width:12px; height:12px; border-radius:3px; border:1px solid var(--paper-line-strong); transition: transform .15s ease; }
+  .cal-legend:hover .cal-swatch{ transform: scale(1.05); }
+  .cal-swatch[data-lvl="0"]{ background:var(--paper-line); }
+  .cal-swatch[data-lvl="1"]{ background:#E8D3D6; }
+  .cal-swatch[data-lvl="2"]{ background:#C97D82; }
+  .cal-swatch[data-lvl="3"]{ background:var(--maroon); }
+  .cal-line-wrap{ margin-top:18px; padding-top:16px; border-top:1px solid var(--paper-line-strong); }
+  .cal-line-wrap h4{
+    font-family:'Source Serif 4', serif; font-size:13px; margin:0 0 10px; color:var(--ink);
+    font-weight:600;
+  }
+  .cal-line-wrap canvas{ max-height:140px; }
+
+  .ledger{
+    background:#fff;
+    border:1px solid var(--paper-line-strong);
+    border-radius: var(--radius);
+    box-shadow: var(--card-shadow);
+    overflow:hidden;
+    margin-bottom:26px;
+  }
+  .ledger-head{
+    display:grid;
+    grid-template-columns: 2.2fr .8fr .8fr .8fr 1fr .8fr;
+    background: var(--ink);
+    color:#fff;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11px;
+    letter-spacing:.04em;
+    text-transform:uppercase;
+    padding:11px 18px;
+  }
+  .ledger-row{
+    display:grid;
+    grid-template-columns: 2.2fr .8fr .8fr .8fr 1fr .8fr;
+    padding:12px 18px;
+    align-items:center;
+    border-top:1px solid var(--paper-line);
+    font-size:13.5px;
+  }
+  .ledger-row:nth-child(even){ background: #FDFBF5; }
+  .ledger-row .subj-name{ font-weight:600; }
+  .ledger-row .num{ font-family:'IBM Plex Mono', monospace; }
+  .bar-cell{ display:flex; align-items:center; gap:8px; }
+  .bar-track{ flex:1; height:8px; background: var(--paper-line); border-radius:4px; overflow:hidden; }
+  .bar-fill{ display:block; height:100%; background: linear-gradient(90deg, var(--maroon), var(--gold)); border-radius:4px; transition: width .4s ease;}
+  .pct-txt{ font-family:'IBM Plex Mono', monospace; font-size:12px; width:36px; text-align:right;}
+
+  /* ---------- Checklist ---------- */
+  .subject-group{
+    background:#fff;
+    border:1px solid var(--paper-line-strong);
+    border-radius: var(--radius);
+    box-shadow: var(--card-shadow);
+    margin-bottom:16px;
+    overflow:hidden;
+  }
+  .subject-group summary{
+    cursor:pointer;
+    list-style:none;
+    padding:14px 18px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    background: linear-gradient(90deg, var(--maroon) 0%, var(--maroon-deep) 100%);
+    color:#fff;
+    font-family:'Source Serif 4', serif;
+    font-weight:600;
+    font-size:15px;
+  }
+  .subject-group summary::-webkit-details-marker{ display:none; }
+  .subject-group summary .chev{ transition: transform .2s ease; font-size:12px; color: var(--gold-soft);}
+  .subject-group[open] summary .chev{ transform: rotate(90deg); }
+  .subject-group summary .mini-pct{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12px;
+    background: rgba(255,255,255,.15);
+    padding:3px 9px;
+    border-radius:20px;
+  }
+  .topic-row{
+    display:grid;
+    grid-template-columns: 2.4fr 140px 110px 1.4fr 26px;
+    gap:10px;
+    align-items:center;
+    padding:11px 18px;
+    border-top:1px solid var(--paper-line);
+  }
+  .topic-row:nth-child(even){ background:#FDFBF5; }
+  .topic-title{ font-size:13.5px; }
+  .topic-del-btn{
+    background:none; border:none; color: var(--red); cursor:pointer; font-size:15px; opacity:.55;
+    transition: opacity .15s ease;
+  }
+  .topic-del-btn:hover{ opacity:1; }
+  .add-topic-row{
+    display:flex; gap:8px; align-items:center;
+    padding:12px 18px;
+    border-top:1px dashed var(--paper-line-strong);
+    background: var(--paper);
+  }
+  .add-topic-input{
+    flex:1;
+    font-family:'Inter',sans-serif;
+    font-size:12.5px;
+    padding:7px 10px;
+    border-radius:6px;
+    border:1.5px dashed var(--paper-line-strong);
+    outline:none;
+    background:#fff;
+  }
+  .add-topic-input:focus{ border-color: var(--gold); border-style:solid; }
+  .add-topic-btn{
+    font-family:'Inter',sans-serif;
+    font-weight:700;
+    font-size:12px;
+    background: var(--gold);
+    color: var(--maroon-deep);
+    border:none;
+    padding:8px 14px;
+    border-radius:6px;
+    cursor:pointer;
+    white-space:nowrap;
+    transition: background .15s ease;
+  }
+  .add-topic-btn:hover{ background: var(--gold-soft); }
+  select.status-select{
+    font-family:'Inter',sans-serif;
+    font-size:12.5px;
+    font-weight:600;
+    padding:5px 8px;
+    border-radius:6px;
+    border:1.5px solid var(--paper-line-strong);
+    cursor:pointer;
+    outline:none;
+  }
+  select.status-select.st-completed{ background: var(--green-bg); color: var(--green); border-color: var(--green);}
+  select.status-select.st-inprogress{ background: var(--amber-bg); color: var(--amber); border-color: var(--amber);}
+  select.status-select.st-notstarted{ background: var(--red-bg); color: var(--red); border-color: var(--red);}
+  select.priority-select{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11.5px;
+    padding:5px 6px;
+    border-radius:6px;
+    border:1.5px solid var(--paper-line-strong);
+    background:#fff;
+    color: var(--ink-soft);
+  }
+  input.notes-input{
+    font-family:'Inter',sans-serif;
+    font-size:12.5px;
+    padding:6px 9px;
+    border-radius:6px;
+    border:1.5px solid var(--paper-line);
+    outline:none;
+    width:100%;
+  }
+  input.notes-input:focus{ border-color: var(--gold); }
+
+  /* ---------- Study log ---------- */
+  .log-form{
+    display:grid;
+    grid-template-columns: 130px 1.4fr 1.8fr 90px 90px 1.6fr auto;
+    gap:8px;
+    background:#fff;
+    border:1px solid var(--paper-line-strong);
+    border-radius: var(--radius);
+    padding:14px;
+    margin-bottom:18px;
+    box-shadow: var(--card-shadow);
+    align-items:center;
+  }
+  .log-form input, .log-form select{
+    font-family:'Inter',sans-serif;
+    font-size:12.5px;
+    padding:8px 9px;
+    border-radius:6px;
+    border:1.5px solid var(--paper-line-strong);
+    outline:none;
+    width:100%;
+  }
+  .log-form button{
+    font-family:'Inter',sans-serif;
+    font-weight:700;
+    font-size:12.5px;
+    background: var(--maroon);
+    color:#fff;
+    border:none;
+    padding:9px 16px;
+    border-radius:6px;
+    cursor:pointer;
+    transition: background .15s ease;
+  }
+  .log-form button:hover{ background: var(--maroon-deep); }
+
+  .log-table-wrap{
+    background:#fff;
+    border:1px solid var(--paper-line-strong);
+    border-radius: var(--radius);
+    box-shadow: var(--card-shadow);
+    overflow:hidden;
+  }
+  .log-head{
+    display:grid;
+    grid-template-columns: 100px 1.4fr 1.8fr 80px 90px 1.6fr 30px;
+    background: var(--ink);
+    color:#fff;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11px;
+    text-transform:uppercase;
+    padding:10px 16px;
+  }
+  .log-row{
+    display:grid;
+    grid-template-columns: 100px 1.4fr 1.8fr 80px 90px 1.6fr 30px;
+    padding:10px 16px;
+    font-size:12.8px;
+    border-top:1px solid var(--paper-line);
+    align-items:center;
+  }
+  .log-row:nth-child(even){ background:#FDFBF5; }
+  .log-row .del-btn{
+    background:none; border:none; color: var(--red); cursor:pointer; font-size:15px;
+  }
+  .empty-log{ padding:26px; text-align:center; color: var(--ink-soft); font-size:13px;}
+
+  /* ---------- Leaderboard ---------- */
+  .lb-refresh-btn{
+    float:right;
+    font-family:'Inter',sans-serif;
+    font-size:11.5px;
+    font-weight:600;
+    background: var(--paper);
+    border:1.5px solid var(--paper-line-strong);
+    color: var(--maroon);
+    padding:5px 12px;
+    border-radius:20px;
+    cursor:pointer;
+  }
+  .lb-refresh-btn:hover{ background: var(--gold-soft); }
+  .lb-head{
+    display:grid;
+    grid-template-columns: 50px 1.6fr .8fr 1.6fr .8fr .8fr;
+    gap:10px;
+    background: var(--ink);
+    color:#fff;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11px;
+    text-transform:uppercase;
+    padding:10px 14px;
+    border-radius:6px 6px 0 0;
+    margin-top:6px;
+  }
+  .lb-row{
+    display:grid;
+    grid-template-columns: 50px 1.6fr .8fr 1.6fr .8fr .8fr;
+    gap:10px;
+    padding:11px 14px;
+    align-items:center;
+    border-bottom:1px solid var(--paper-line);
+    font-size:13px;
+  }
+  .lb-row:nth-child(even){ background:#FDFBF5; }
+  .lb-row.top1{ background: linear-gradient(90deg, #FFF7DC, #FFFDF6); font-weight:700; }
+  .lb-row.top2{ background:#F5F5F5; font-weight:600; }
+  .lb-row.top3{ background:#FBF0E6; font-weight:600; }
+  .lb-rank{ font-family:'IBM Plex Mono', monospace; }
+  .lb-bar-cell{ display:flex; align-items:center; gap:8px; }
+  .lb-bar-track{ flex:1; height:8px; background: var(--paper-line); border-radius:4px; overflow:hidden; }
+  .lb-bar-fill{ display:block; height:100%; background: linear-gradient(90deg, var(--maroon), var(--gold)); border-radius:4px; transition: width .4s ease; }
+  .lb-pct{ font-family:'IBM Plex Mono', monospace; font-size:12px; width:42px; text-align:right; }
+  .lb-badges{ font-family:'IBM Plex Mono', monospace; font-size:12.5px; }
+  .lb-title{
+    display:block;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:10px;
+    font-weight:600;
+    letter-spacing:.02em;
+    color: var(--maroon);
+    margin-top:2px;
+  }
+  .lb-msg{ padding:22px; text-align:center; color: var(--ink-soft); font-size:13px; }
+
+  /* ---------- Badges ---------- */
+  .badges-count-pill{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12px;
+    background: var(--paper);
+    border:1px solid var(--paper-line-strong);
+    color: var(--ink-soft);
+    padding:4px 10px;
+    border-radius:20px;
+    float:right;
+  }
+  .badge-grid{
+    display:grid;
+    grid-template-columns: repeat(auto-fill, minmax(170px,1fr));
+    gap:14px;
+    margin-top:6px;
+  }
+  .badge-card{
+    border:1.5px solid var(--paper-line-strong);
+    border-radius: var(--radius);
+    padding:18px 12px;
+    text-align:center;
+    background:#fff;
+    transition: transform .15s ease, box-shadow .15s ease;
+  }
+  .badge-card.earned{
+    background: linear-gradient(160deg, #FFFDF6, #FFF7DC);
+    border-color: var(--gold);
+    box-shadow: 0 2px 12px rgba(201,162,39,0.25);
+  }
+  .badge-card.earned:hover{ transform: translateY(-2px); }
+  .badge-card.locked{ opacity:.5; }
+  .badge-icon{ font-size:30px; margin-bottom:8px; line-height:1; }
+  .badge-title{
+    font-family:'Source Serif 4', serif;
+    font-weight:700;
+    font-size:13px;
+    color: var(--ink);
+    margin-bottom:4px;
+  }
+  .badge-desc{ font-size:11px; color: var(--ink-soft); line-height:1.4; }
+
+  .conf-dot{ display:inline-flex; gap:2px; }
+  .conf-dot span{ width:6px; height:6px; border-radius:50%; background: var(--paper-line-strong); }
+  .conf-dot span.on{ background: var(--gold); }
+
+  footer{ text-align:center; color: var(--ink-soft); font-size:11.5px; margin-top:20px; font-family:'IBM Plex Mono', monospace;}
+  .credit{ text-align:center; color: var(--gold); font-size:11.5px; margin-top:6px; font-family:'IBM Plex Mono', monospace; letter-spacing:.05em;}
+
+  .checklist-toolbar{ display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:14px; flex-wrap:wrap; }
+  .checklist-sync-note{ font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--ink-soft); margin:0; }
+
+  /* ---------- Quizzes ---------- */
+  .quiz-subject-block{ background:#fff; border:1px solid var(--paper-line-strong); border-radius:10px; margin-bottom:14px; overflow:hidden; }
+  .quiz-subject-head{
+    background: linear-gradient(150deg,var(--maroon) 0%, var(--maroon-deep) 100%);
+    color:#fff; padding:12px 16px; font-family:'Source Serif 4',serif; font-weight:600; font-size:15px;
+    display:flex; align-items:center; justify-content:space-between; cursor:pointer;
+  }
+  .quiz-subject-body{ padding:16px; display:none; }
+  .quiz-subject-body.open{ display:block; }
+  .quiz-notes-label{ font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--ink-soft); text-transform:uppercase; letter-spacing:.05em; margin-bottom:6px; }
+  .quiz-notes-view{ background:var(--paper); border:1px solid var(--paper-line-strong); border-radius:8px; padding:12px 14px; font-size:13px; color:var(--ink); line-height:1.5; white-space:pre-wrap; max-height:160px; overflow-y:auto; margin-bottom:10px; }
+  .quiz-notes-textarea{ width:100%; min-height:140px; font-family:'Inter',sans-serif; font-size:13px; padding:10px 12px; border:1px solid var(--paper-line-strong); border-radius:8px; resize:vertical; margin-bottom:8px; }
+  .quiz-btn-row{ display:flex; gap:10px; flex-wrap:wrap; margin-bottom:14px; }
+  .quiz-gen-btn{ background: var(--maroon); color:#fff; border:none; font-family:'Inter',sans-serif; font-weight:600; font-size:12.5px; padding:8px 16px; border-radius:20px; cursor:pointer; }
+  .quiz-gen-btn:hover{ background: var(--maroon-deep); }
+  .quiz-gen-btn:disabled{ opacity:.5; cursor:default; }
+  .quiz-list-item{ display:flex; align-items:center; justify-content:space-between; background:var(--paper); border:1px solid var(--paper-line-strong); border-radius:8px; padding:10px 14px; margin-bottom:8px; }
+
+  /* ---------- Board ---------- */
+  .board-post{ background:#fff; border:1px solid var(--paper-line-strong); border-radius:8px; padding:12px 14px; margin-bottom:10px; }
+  .board-post-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; }
+  .board-post-name{ font-weight:600; font-size:13px; color:var(--ink); }
+  .board-post-name.anon{ font-style:italic; font-weight:400; color:var(--ink-soft); }
+  .board-post-meta{ font-family:'IBM Plex Mono',monospace; font-size:10.5px; color:var(--ink-soft); }
+  .board-post-body{ font-size:13.5px; color:var(--ink); line-height:1.5; white-space:pre-wrap; }
+  .board-del-btn{ background:none; border:none; color:var(--red, #A23B2E); font-family:'IBM Plex Mono',monospace; font-size:10.5px; cursor:pointer; padding:0; margin-left:8px; text-decoration:underline; }
+  .quiz-avg-summary{ display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px; }
+  .quiz-avg-item{ display:flex; flex-direction:column; align-items:flex-start; background:var(--maroon); color:#fff; border-radius:8px; padding:8px 12px; min-width:120px; }
+  .quiz-avg-pct{ font-family:'Source Serif 4',serif; font-size:20px; font-weight:700; line-height:1.1; }
+  .quiz-avg-label{ font-family:'IBM Plex Mono',monospace; font-size:10.5px; color:rgba(255,255,255,.75); margin-top:2px; }
+  .quiz-attempts-left{ font-size:11px; color:var(--ink-soft); }
+  .quiz-attempts-used{ font-size:11px; color:#B23A2E; font-weight:600; }
+  .quiz-list-item .qi-title{ font-size:13.5px; color:var(--ink); }
+  .quiz-list-item .qi-meta{ font-family:'IBM Plex Mono',monospace; font-size:10.5px; color:var(--ink-soft); display:block; margin-top:2px; }
+  .quiz-take-btn{ background: var(--gold); color: var(--maroon-deep); border:none; font-weight:700; font-family:'Inter',sans-serif; font-size:12px; padding:7px 14px; border-radius:16px; cursor:pointer; }
+  .quiz-q-block{ margin-bottom:18px; text-align:left; }
+  .quiz-q-block p.qtext{ color:var(--ink); font-size:13.5px; margin:0 0 8px; font-weight:600; }
+  .quiz-choice{ display:flex; align-items:center; gap:8px; color:var(--ink); font-size:13px; margin-bottom:6px; }
+  .quiz-choice.correct{ color:#2F6B3E; font-weight:600; }
+  .quiz-choice.wrong-picked{ color:#A23B2E; font-weight:600; }
+  .quiz-explain{ color:var(--ink-soft); font-size:11.5px; margin:4px 0 0 22px; }
+  .quiz-score{ font-family:'Source Serif 4',serif; color:var(--maroon); font-size:20px; margin-bottom:14px; }
+
+  /* ---------- Access gate ---------- */
+  .access-gate{
+    position:fixed; inset:0; z-index:2000; padding:20px;
+    display:flex; align-items:center; justify-content:center;
+    background: linear-gradient(150deg, var(--maroon) 0%, var(--maroon-deep) 100%);
+  }
+  .access-card{
+    max-width:360px; width:100%; text-align:center;
+    background: rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.18);
+    border-radius:16px; padding:32px 26px 28px; border-top:4px solid var(--gold);
+  }
+  .access-eyebrow{ font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:var(--gold-soft); margin-bottom:10px; }
+  .access-card h2{ font-family:'Source Serif 4',serif; color:#fff; font-size:24px; margin:0 0 8px; }
+  .access-sub{ color: rgba(255,255,255,.75); font-size:13.5px; margin:0 0 18px; }
+  .access-card input{
+    width:100%; font-family:'Inter',sans-serif; font-size:14px; padding:11px 14px;
+    border:1px solid rgba(255,255,255,.3); border-radius:8px; background: rgba(255,255,255,.08);
+    color:#fff; margin-bottom:12px; text-align:center;
+  }
+  .access-card input::placeholder{ color: rgba(255,255,255,.45); }
+  .access-card button{
+    width:100%; background: var(--gold); color: var(--maroon-deep); border:none; font-weight:700;
+    font-family:'Inter',sans-serif; font-size:14px; padding:11px; border-radius:8px; cursor:pointer;
+  }
+  .access-card button:hover{ background: var(--gold-soft); }
+  .access-error{ color:#F4B7AC; font-size:12px; margin:12px 0 0; min-height:14px; }
+
+  /* ---------- Announcement popup ---------- */
+  @keyframes modalOverlayIn{ from{ opacity:0; } to{ opacity:1; } }
+  @keyframes modalPopIn{
+    from{ opacity:0; transform:translateY(18px) scale(.96); }
+    to{ opacity:1; transform:translateY(0) scale(1); }
+  }
+  .ann-modal-overlay{
+    position:fixed; inset:0; background: rgba(20,33,61,.55); backdrop-filter: blur(2px);
+    display:flex; align-items:center; justify-content:center; z-index:999; padding:20px;
+    animation: modalOverlayIn .22s ease;
+  }
+  .ann-modal{
+    background: var(--paper);
+    background-image: linear-gradient(var(--paper-line) 1px, transparent 1px);
+    background-size: 100% 28px;
+    border-radius:16px; max-width:520px; width:100%; padding:30px 30px 26px;
+    box-shadow: 0 20px 60px rgba(0,0,0,.35); border:2px solid var(--maroon);
+    max-height: 85vh; overflow-y: auto;
+    animation: modalPopIn .35s cubic-bezier(.2,.9,.25,1.05);
+  }
+  .ann-modal-eyebrow{ font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:var(--maroon); margin-bottom:10px; }
+  .ann-modal h2{ font-family:'Source Serif 4',serif; color:var(--ink); font-size:22px; margin:0 0 16px; }
+  .ann-modal #ann-modal-body{ color:var(--ink); font-size:14.5px; line-height:1.75; letter-spacing:.01em; word-spacing:.02em; white-space:pre-wrap; margin:0 0 10px; }
+  .ann-subject-list{ white-space:normal; display:flex; flex-direction:column; gap:12px; }
+  .ann-subject-item{
+    background: var(--paper);
+    border-left: 4px solid var(--maroon);
+    border-radius: 8px;
+    padding: 12px 16px;
+    font-size:14px; line-height:1.65; color:var(--ink); white-space:pre-wrap;
+  }
+  .ann-subject-name{
+    display:inline-block;
+    background: var(--maroon); color:#fff;
+    font-family:'IBM Plex Mono',monospace; font-size:10.5px; font-weight:700; letter-spacing:.04em;
+    text-transform:uppercase; padding:3px 10px; border-radius:4px;
+    margin:0 8px 4px 0; vertical-align:middle;
+  }
+  .ann-log-item .ann-subject-list{ margin-bottom:6px; }
+  .ann-modal-meta{ color:var(--ink-soft); font-size:11px; font-family:'IBM Plex Mono',monospace; margin:0 0 18px; }
+  .ann-modal-actions{
+    display:flex; align-items:center; gap:14px; flex-wrap:wrap;
+    position:sticky; bottom:-26px; background:var(--paper); padding:14px 0 4px; margin-top:10px;
+    border-top:1px solid var(--paper-line-strong);
+  }
+  .ann-modal-close{
+    background: var(--maroon); color:#fff; border:none; font-weight:700;
+    font-family:'Inter',sans-serif; font-size:13.5px; padding:9px 20px; border-radius:20px; cursor:pointer;
+    transition: background .18s ease, transform .12s ease, box-shadow .18s ease;
+  }
+  .ann-modal-close:hover{ background: var(--maroon-deep); transform: translateY(-1px); box-shadow: 0 4px 10px rgba(122,15,29,.3); }
+  .ann-modal-close:active{ transform: translateY(0); }
+  .ann-modal-overlay.closing{ animation: modalOverlayOut .18s ease forwards; }
+  .ann-modal-overlay.closing .ann-modal{ animation: modalPopOut .18s ease forwards; }
+  @keyframes modalOverlayOut{ to{ opacity:0; } }
+  @keyframes modalPopOut{ to{ opacity:0; transform:translateY(10px) scale(.97); } }
+  .ann-modal-edit-link{
+    background:none; border:none; color: var(--ink-soft); font-family:'IBM Plex Mono',monospace;
+    font-size:11px; cursor:pointer; text-decoration:underline; padding:4px 0;
+  }
+  .ann-modal-edit-link:hover{ color: var(--maroon); }
+  #ann-blocks{ display:flex; flex-direction:column; gap:14px; margin-bottom:12px; }
+  @keyframes annBlockIn{ from{ opacity:0; transform:translateY(-6px); } to{ opacity:1; transform:translateY(0); } }
+  .ann-block{
+    background:#fff; border:1px solid var(--paper-line-strong); border-radius:10px;
+    padding:12px; animation: annBlockIn .2s ease;
+  }
+  .ann-block-head{ display:flex; align-items:center; gap:8px; margin-bottom:10px; }
+  .ann-block-subject{
+    flex:1; box-sizing:border-box; font-family:'Inter',sans-serif; font-size:13.5px;
+    padding:9px 12px; border:1px solid var(--paper-line-strong); border-radius:8px;
+    background:#fff; color:var(--ink); cursor:pointer;
+  }
+  .ann-block-subject:focus{ outline:none; border-color: var(--maroon); }
+  .ann-block-remove{
+    flex:0 0 auto; width:26px; height:26px; border-radius:50%; border:none;
+    background: var(--paper-line); color: var(--ink-soft); font-size:14px; line-height:1;
+    cursor:pointer; display:flex; align-items:center; justify-content:center;
+    transition: background .15s ease, color .15s ease, transform .15s ease;
+  }
+  .ann-block-remove:hover{ background:#F4B7AC; color:#7A0F1D; transform: scale(1.08); }
+  .ann-block-text{
+    width:100%; box-sizing:border-box; font-family:'Inter',sans-serif; font-size:14px;
+    line-height:1.7; letter-spacing:.01em; padding:12px 14px;
+    border:1px solid var(--paper-line-strong); border-radius:8px; resize:vertical;
+    background:#fff; color:var(--ink);
+  }
+  .ann-block-text::placeholder{ color: var(--ink-soft); }
+  .ann-add-block-btn{
+    width:100%; box-sizing:border-box; padding:11px; margin-bottom:16px;
+    background: var(--paper); border:1.5px dashed var(--paper-line-strong); border-radius:8px;
+    color: var(--maroon); font-family:'Inter',sans-serif; font-size:13.5px; font-weight:600;
+    cursor:pointer; transition: background .15s ease, border-color .15s ease;
+  }
+  .ann-add-block-btn:hover{ background:#fff; border-color: var(--maroon); }
+  .ann-log-list{ max-height:320px; overflow-y:auto; margin-bottom:16px; }
+  .ann-log-item{
+    border-bottom:1px solid var(--paper-line-strong); padding:12px 0; text-align:left;
+  }
+  .ann-log-item:last-child{ border-bottom:none; }
+  .ann-log-item > div{ color:var(--ink); font-size:13.5px; line-height:1.7; letter-spacing:.01em; margin:0 0 6px; white-space:pre-wrap; }
+  .ann-log-item span{ color:var(--ink-soft); font-family:'IBM Plex Mono',monospace; font-size:10.5px; }
+
+  /* ---------- Announcement bullet list ---------- */
+  .ann-list{ margin:0; padding-left:20px; list-style:disc; }
+  .ann-list li{ margin:0 0 8px; }
+  .ann-list li:last-child{ margin-bottom:0; }
+  .ann-subject-item .ann-list{ margin-top:6px; }
+
+  @media (max-width: 600px){
+    .ann-modal-overlay{ padding:10px; align-items:flex-end; }
+    .ann-modal{
+      padding:20px 16px 18px; max-width:100%; max-height:90vh;
+      border-radius:16px 16px 0 0;
+    }
+    .ann-modal h2{ font-size:19px; margin-bottom:12px; }
+    .ann-modal-eyebrow{ font-size:10px; }
+    .ann-modal #ann-modal-body{ font-size:13.5px; }
+    .ann-list{ padding-left:18px; }
+    .ann-subject-item{ padding:10px 12px; font-size:13px; }
+    .ann-subject-name{ font-size:10px; padding:3px 8px; }
+    .ann-modal-actions{
+      flex-direction:column; align-items:stretch; gap:8px;
+      bottom:-18px; padding:12px 0 2px;
+    }
+    .ann-modal-actions button{ width:100%; text-align:center; }
+    .ann-modal-close{ padding:11px 16px; }
+    .ann-block-head{ flex-wrap:wrap; }
+    .ann-block-subject{ font-size:14px; min-width:0; }
+    .ann-block-text{ font-size:14px; }
+    .ann-log-item > div{ font-size:13px; }
+  }
+
+  @media (max-width: 860px){
+    .cover{ padding-top:20px; }
+    .cover-actions{ position:static; display:flex; flex-wrap:wrap; gap:6px; margin:0 0 16px; padding:0; }
+    .cover-actions .logout-btn{ font-size:10px; padding:6px 10px; }
+    .tab-btn{ font-size:13px; padding:10px 12px; }
+    .info-grid{ grid-template-columns: repeat(2,1fr); }
+    .kpi-strip{ grid-template-columns: repeat(2,1fr); }
+    .kpi{ border-bottom:1px solid var(--paper-line); }
+    .charts-row{ grid-template-columns: 1fr; }
+    .ledger-head, .ledger-row{ grid-template-columns: 1.6fr .7fr .7fr 1fr; }
+    .ledger-head span:nth-child(4), .ledger-row span:nth-child(4){ display:none; }
+    .topic-row{ grid-template-columns: 1fr 1fr; gap:6px; }
+    .topic-row .topic-title{ grid-column: 1 / -1; }
+    .add-topic-row{ flex-wrap:wrap; }
+    .log-form{ grid-template-columns: 1fr 1fr; }
+    .log-head, .log-row{ grid-template-columns: 80px 1fr 1fr; }
+    .log-head span:nth-child(3), .log-row span:nth-child(3),
+    .log-head span:nth-child(5), .log-row span:nth-child(5),
+    .log-head span:nth-child(6), .log-row span:nth-child(6){ display:none; }
+    .lb-head, .lb-row{ grid-template-columns: 40px 1.6fr 1.4fr .6fr .6fr; }
+    .lb-head span:nth-child(3), .lb-row span:nth-child(3){ display:none; }
+
+    .cal-stats-row{ gap:6px; margin:10px 0 12px; }
+    .cal-stat{ padding:7px 4px; }
+    .cal-stat .v{ font-size:14px; }
+    .cal-stat .l{ font-size:8px; }
+    .cal-grid{ max-width:280px; gap:4px; }
+    .cal-day{ max-height:28px; font-size:9px; border-radius:5px; }
+    .cal-line-wrap{ margin-top:14px; padding-top:12px; }
+    .cal-line-wrap canvas{ max-height:110px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ACCESS GATE — asks for a key once per device/browser before the app is usable -->
+<div id="access-gate" class="access-gate">
+  <div class="access-card">
+    <div class="access-eyebrow">🔒 University of the Visayas · BSA</div>
+    <h2>Study Ledger</h2>
+    <p class="access-sub">Enter the class access key to continue.</p>
+    <input type="password" id="access-gate-input" placeholder="Access key" autocomplete="off" />
+    <button id="access-gate-btn">Unlock</button>
+    <p id="access-gate-error" class="access-error"></p>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <div class="cover">
+    <div class="cover-actions">
+      <button id="year-level-badge" class="logout-btn" title="Change your year level">🎓 3rd Year</button>
+      <button id="ann-open-btn" class="logout-btn" title="View or post the class announcement">📢 Announcement</button>
+      <button id="notif-btn" class="logout-btn" title="Get a daily study reminder">🔔 Daily reminder</button>
+      <button id="export-btn" class="logout-btn" title="Download a backup of your data">⬇ Export</button>
+      <button id="import-btn" class="logout-btn" title="Restore data from a backup file">⬆ Import</button>
+      <button id="reset-btn" class="logout-btn" title="Erase all data on this device">Reset</button>
+      <input type="file" id="import-file" accept="application/json" style="display:none;" />
+    </div>
+    <div class="eyebrow">University of the Visayas</div>
+    <h1>Study Ledger — Semester Progress</h1>
+    <p class="sub">Track every subject like a trial balance: topics not started, in progress, and completed must always foot to the total.</p>
+    <div class="info-grid">
+      <div class="info-field"><label>Name</label><input id="f-name" placeholder="Juan Dela Cruz" /></div>
+      <div class="info-field"><label>ID Number</label><input id="f-id" placeholder="2023-00000" /><span id="login-status" style="display:block; font-family:'IBM Plex Mono',monospace; font-size:9.5px; color:rgba(255,255,255,.6); margin-top:3px;"></span></div>
+      <div class="info-field"><label>Year &amp; Section</label><input id="f-section" placeholder="BSA 3-A2" /></div>
+      <div class="info-field"><label>School Year</label><input id="f-year" placeholder="SY 2026-2027, 1st Sem" /></div>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="dashboard">Dashboard</button>
+    <button class="tab-btn" data-tab="checklist">Topics Checklist</button>
+    <button class="tab-btn" data-tab="log">Study Log</button>
+    <button class="tab-btn" data-tab="badges">🏅 Badges</button>
+    <button class="tab-btn" data-tab="leaderboard">🏆 Leaderboard</button>
+    <button class="tab-btn" data-tab="quizzes">🧠 Quizzes</button>
+    <button class="tab-btn" data-tab="board">💬 Board</button>
+  </div>
+
+  <!-- DASHBOARD -->
+  <div class="panel active" id="panel-dashboard">
+    <div class="kpi-strip">
+      <div class="kpi"><div class="val" id="kpi-total">0</div><div class="lbl">Total Topics</div></div>
+      <div class="kpi"><div class="val" id="kpi-completed">0</div><div class="lbl">Completed</div></div>
+      <div class="kpi"><div class="val" id="kpi-progress">0</div><div class="lbl">In Progress</div></div>
+      <div class="kpi"><div class="val" id="kpi-pct">0%</div><div class="lbl">Overall Complete</div></div>
+      <div class="kpi"><div class="val" id="kpi-hours">0.0</div><div class="lbl">Hours Logged</div></div>
+      <div class="kpi" id="kpi-streak-card"><div class="val" id="kpi-streak">0</div><div class="lbl">🔥 Day Streak</div></div>
+    </div>
+
+    <div class="card" style="margin-bottom:22px;">
+      <h3>📅 This Month <span id="cal-month-label" class="cal-month-label"></span></h3>
+      <div class="cal-stats-row">
+        <div class="cal-stat"><div class="v" id="cal-days-studied">0</div><div class="l">Days Studied</div></div>
+        <div class="cal-stat"><div class="v" id="cal-month-hours">0.0</div><div class="l">Hours This Month</div></div>
+        <div class="cal-stat"><div class="v" id="cal-avg-hours">0.0</div><div class="l">Avg Hrs / Active Day</div></div>
+        <div class="cal-stat"><div class="v" id="cal-best-day">—</div><div class="l">Best Day</div></div>
+      </div>
+      <div class="cal-grid" id="cal-grid"></div>
+      <div class="cal-legend">
+        <span>Less</span>
+        <span class="cal-swatch" data-lvl="0"></span>
+        <span class="cal-swatch" data-lvl="1"></span>
+        <span class="cal-swatch" data-lvl="2"></span>
+        <span class="cal-swatch" data-lvl="3"></span>
+        <span>More</span>
+      </div>
+      <div class="cal-line-wrap">
+        <h4>Hours Logged Trend</h4>
+        <canvas id="calLineChart" height="110"></canvas>
+      </div>
+    </div>
+
+    <div class="charts-row">
+      <div class="card">
+        <h3>Progress by Subject</h3>
+        <canvas id="barChart" height="220"></canvas>
+      </div>
+      <div class="card">
+        <h3>Overall Topic Status</h3>
+        <canvas id="pieChart" height="220"></canvas>
+      </div>
+    </div>
+
+    <div class="ledger">
+      <div class="ledger-head">
+        <span>Subject</span><span>Topics</span><span>Done</span><span>Hours</span><span>% Complete</span><span></span>
+      </div>
+      <div id="ledger-body"></div>
+    </div>
+  </div>
+
+  <!-- YEAR LEVEL POPUP — pops up on first visit; also reopens when the year badge is clicked to switch -->
+  <div id="year-picker-overlay" class="ann-modal-overlay" style="display:none;">
+    <div class="ann-modal" style="max-width:420px; text-align:center;">
+      <div class="ann-modal-eyebrow">STUDY LEDGER</div>
+      <h2>Which year are you in?</h2>
+      <p style="color:var(--ink-soft); font-size:13.5px; line-height:1.6; margin:0 0 20px;">
+        This tells the app which subjects, leaderboard, and board posts to show you. You can change it anytime by tapping the year badge.
+      </p>
+      <div style="display:flex; gap:12px; justify-content:center; flex-wrap:wrap;">
+        <button id="year-pick-1st" class="ann-modal-close" style="background:var(--ink); flex:1; min-width:150px;">🎓 1st Year</button>
+        <button id="year-pick-3rd" class="ann-modal-close" style="flex:1; min-width:150px;">🎓 3rd Year</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- NUDGE POPUP — appears after the announcement popup, based on this device's own progress -->
+  <div id="nudge-overlay" class="ann-modal-overlay" style="display:none;">
+    <div class="ann-modal" style="max-width:400px; text-align:center;">
+      <div class="ann-modal-eyebrow" id="nudge-eyebrow">STUDY LEDGER</div>
+      <h2 id="nudge-title">Checking in</h2>
+      <p id="nudge-body" style="color:var(--ink); font-size:14px; line-height:1.6; margin:0 0 18px;"></p>
+      <div class="ann-modal-actions" style="justify-content:center;">
+        <button id="nudge-close-btn" class="ann-modal-close">Got it</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- CHECKLIST -->
+  <div class="panel" id="panel-checklist">
+    <div class="checklist-toolbar">
+      <p id="checklist-sync-note" class="checklist-sync-note">Topics are shared — everyone in your year level sees the same list.</p>
+      <button id="topics-admin-btn" class="lb-refresh-btn">🔒 Edit topics (admin)</button>
+    </div>
+    <div id="checklist-body"></div>
+  </div>
+
+  <!-- STUDY LOG -->
+  <div class="panel" id="panel-log">
+    <div class="log-form">
+      <input type="date" id="log-date" />
+      <select id="log-subject"></select>
+      <input type="text" id="log-topic" placeholder="Topic covered" />
+      <input type="number" id="log-hours" placeholder="Hrs" step="0.1" min="0" />
+      <select id="log-conf">
+        <option value="">Conf.</option>
+        <option value="1">1 - Low</option>
+        <option value="2">2</option>
+        <option value="3">3</option>
+        <option value="4">4</option>
+        <option value="5">5 - High</option>
+      </select>
+      <input type="text" id="log-notes" placeholder="Notes / confusion log" />
+      <button id="log-add">+ Add Entry</button>
+    </div>
+    <div class="log-table-wrap">
+      <div class="log-head">
+        <span>Date</span><span>Subject</span><span>Topic</span><span>Hrs</span><span>Conf.</span><span>Notes</span><span></span>
+      </div>
+      <div id="log-body"></div>
+    </div>
+  </div>
+
+  <!-- BADGES -->
+  <div class="panel" id="panel-badges">
+    <div class="card">
+      <h3>Your Badges <span id="badges-count" class="badges-count-pill"></span></h3>
+      <div class="badge-grid" id="badges-body"></div>
+    </div>
+  </div>
+
+  <!-- LEADERBOARD -->
+  <div class="panel" id="panel-leaderboard">
+    <div class="lb-optin">
+      <input type="checkbox" id="lb-optin-check" />
+      <label for="lb-optin-check"><strong>Share my progress on the class leaderboard.</strong> This posts your name, ID, section, and progress to a shared list anyone with this file can view. Unchecked, your data stays only on this device.</label>
+    </div>
+    <div class="card">
+      <h3>Class Leaderboard <button id="lb-refresh" class="lb-refresh-btn">↻ Refresh</button></h3>
+      <div class="lb-head">
+        <span>Rank</span><span>Name</span><span>Section</span><span>Progress</span><span>Badges</span><span>Hours</span>
+      </div>
+      <div id="lb-body"><p class="lb-msg">Loading…</p></div>
+    </div>
+  </div>
+
+  <!-- QUIZZES -->
+  <div class="panel" id="panel-quizzes">
+    <p class="checklist-sync-note" style="margin-bottom:14px;">Admin compiles review notes per subject, then generates quizzes from them — everyone can take the quizzes.</p>
+    <div class="card" style="margin-bottom:16px;">
+      <h3>My Quiz History <button id="my-scores-toggle" class="lb-refresh-btn">▾ Show</button></h3>
+      <div id="my-scores-body" style="display:none;"></div>
+    </div>
+    <div id="quizzes-body"></div>
+  </div>
+
+  <!-- BOARD -->
+  <div class="panel" id="panel-board">
+    <div class="card" style="margin-bottom:16px;">
+      <h3>Class Board <button id="board-refresh-btn" class="lb-refresh-btn">↻ Refresh</button> <button id="board-mod-btn" class="lb-refresh-btn">🔒 Moderate</button></h3>
+      <p class="checklist-sync-note" style="margin-bottom:10px;">Post updates, questions, or rants — everyone with this app can see this board. Be decent to each other. Or not HAHAHAHAHAHA. Posts auto-delete after 24 hours.</p>
+      <textarea id="board-textarea" maxlength="600" rows="3" placeholder="Write something for the class..." style="width:100%; font-family:'Inter',sans-serif; font-size:13.5px; padding:10px 12px; border:1px solid var(--paper-line-strong); border-radius:8px; resize:vertical;"></textarea>
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-top:8px; flex-wrap:wrap; gap:10px;">
+        <label style="display:flex; align-items:center; gap:6px; font-size:12.5px; color:var(--ink-soft);">
+          <input type="checkbox" id="board-anon-check" /> Post anonymously
+        </label>
+        <span id="board-char-count" style="font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--ink-soft);">0 / 600</span>
+      </div>
+      <button id="board-post-btn" class="quiz-gen-btn" style="margin-top:10px;">Post</button>
+      <p class="checklist-sync-note" style="margin-top:6px;">Tip: Ctrl/Cmd+Enter also posts.</p>
+    </div>
+    <div id="board-body"></div>
+  </div>
+
+  <!-- QUIZ TAKING MODAL -->
+  <div id="quiz-take-overlay" class="ann-modal-overlay" style="display:none;">
+    <div class="ann-modal" style="max-width:520px; max-height:85vh; overflow-y:auto;">
+      <div class="ann-modal-eyebrow" id="quiz-take-subject">SUBJECT</div>
+      <h2 id="quiz-take-title">Quiz</h2>
+      <div id="quiz-take-body"></div>
+      <div class="ann-modal-actions" style="margin-top:16px;">
+        <button id="quiz-submit-btn" class="ann-modal-close">Submit Quiz</button>
+        <button id="quiz-close-btn" class="ann-modal-edit-link">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <footer>Offline edition · saved locally in this browser only · use Export above to back up or move devices</footer>
+  <div class="credit">Made by EJAN</div>
+</div>
+
+<!-- ANNOUNCEMENT POPUP — shown automatically on every load/refresh if there's an active announcement,
+     and reopenable any time via the 📢 Announcement button in the cover -->
+<div id="ann-modal-overlay" class="ann-modal-overlay" style="display:none;">
+  <div class="ann-modal">
+    <div class="ann-modal-eyebrow">📢 University of the Visayas · BSA</div>
+    <h2>Class Announcement</h2>
+
+    <div id="ann-view-mode">
+      <div id="ann-modal-body">Loading…</div>
+      <p id="ann-modal-meta" class="ann-modal-meta"></p>
+      <div class="ann-modal-actions">
+        <button id="ann-modal-close" class="ann-modal-close">Got it</button>
+        <button id="ann-log-toggle" class="ann-modal-edit-link">📜 View past announcements</button>
+        <button id="ann-edit-toggle" class="ann-modal-edit-link">🔒 Post / edit (admin)</button>
+      </div>
+    </div>
+
+    <div id="ann-edit-mode" style="display:none;">
+      <div id="ann-blocks"></div>
+      <button type="button" id="ann-add-block-btn" class="ann-add-block-btn">+ Add a subject block</button>
+      <div class="ann-modal-actions">
+        <button id="ann-save-btn" class="ann-modal-close">Post announcement</button>
+        <button id="ann-cancel-btn" class="ann-modal-edit-link">Cancel</button>
+      </div>
+    </div>
+
+    <div id="ann-log-mode" style="display:none;">
+      <div id="ann-log-list" class="ann-log-list"><p class="lb-msg" style="color:rgba(255,255,255,.6);">Loading…</p></div>
+      <div class="ann-modal-actions">
+        <button id="ann-log-back" class="ann-modal-close">Back</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ---------- Access gate ----------
+// Change this to your own class key before sharing the link.
+// This is a client-side check only — anyone who views page source can read it.
+// It's enough to keep the link from being casually shared/wandered into, not real security.
+const SITE_ACCESS_KEY = 'BSA-UV-2026';
+const ACCESS_STORAGE_KEY = 'uv-bsa-site-access';
+
+(function accessGate(){
+  const gate = document.getElementById('access-gate');
+  if(localStorage.getItem(ACCESS_STORAGE_KEY) === 'granted'){
+    gate.style.display = 'none';
+    return;
+  }
+  const input = document.getElementById('access-gate-input');
+  const btn = document.getElementById('access-gate-btn');
+  const err = document.getElementById('access-gate-error');
+  function tryUnlock(){
+    if(input.value.trim() === SITE_ACCESS_KEY){
+      localStorage.setItem(ACCESS_STORAGE_KEY, 'granted');
+      gate.style.display = 'none';
+    } else {
+      err.textContent = 'Incorrect key. Try again.';
+      input.value = '';
+      input.focus();
+    }
+  }
+  btn.addEventListener('click', tryUnlock);
+  input.addEventListener('keydown', (e)=>{ if(e.key === 'Enter') tryUnlock(); });
+  input.focus();
+})();
+
+function esc(s){
+  return (s==null?'':String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// Turns a block of free text into a bullet list: each non-empty line becomes
+// its own <li>. A line that already starts with a bullet/dash marker has that
+// marker stripped first so it doesn't end up double-bulleted.
+function textToBulletsHTML(text){
+  const lines = String(text || '')
+    .split(/\r?\n/)
+    .map(l => l.replace(/^\s*[-•*]\s*/, '').trim())
+    .filter(l => l.length);
+  if(!lines.length) return '';
+  return '<ul class="ann-list">' + lines.map(l => `<li>${esc(l)}</li>`).join('') + '</ul>';
+}
+
+// Announcements are normally plain text, but some were accidentally posted as a
+// JSON array of {subject, text} pairs (e.g. pasted from an export). Detect that
+// shape and render it as a clean per-subject list instead of a raw JSON dump.
+// Every case renders as a bullet list rather than a solid paragraph.
+function announcementBodyHTML(message){
+  const text = message == null ? '' : String(message);
+  const trimmed = text.trim();
+  if(trimmed.startsWith('[') || trimmed.startsWith('{')){
+    try{
+      let parsed = JSON.parse(trimmed);
+      if(!Array.isArray(parsed)) parsed = [parsed];
+      const items = parsed.filter(it => it && typeof it === 'object' && ('text' in it || 'subject' in it));
+      if(items.length){
+        return '<div class="ann-subject-list">' + items.map(it => `
+          <div class="ann-subject-item">${it.subject ? `<span class="ann-subject-name">${esc(it.subject)}</span>` : ''}${textToBulletsHTML(it.text) || esc(it.text || '')}</div>`).join('') + '</div>';
+      }
+    }catch(e){ /* not valid JSON — fall through to plain text */ }
+  }
+  return textToBulletsHTML(trimmed) || esc(text);
+}
+
+function renderAnnouncementBody(message){
+  document.getElementById('ann-modal-body').innerHTML = announcementBodyHTML(message);
+}
+
+// ---------- Announcement edit-mode block builder (per-subject entries) ----------
+function createAnnBlock(subject, text){
+  const block = document.createElement('div');
+  block.className = 'ann-block';
+  const select = document.createElement('select');
+  select.className = 'ann-block-subject';
+  const generalOpt = document.createElement('option');
+  generalOpt.value = '';
+  generalOpt.textContent = 'General / All classes';
+  select.appendChild(generalOpt);
+  SUBJECT_NAMES.forEach(s=>{
+    const opt = document.createElement('option');
+    opt.value = s;
+    opt.textContent = s;
+    select.appendChild(opt);
+  });
+  select.value = subject || '';
+
+  const removeBtn = document.createElement('button');
+  removeBtn.type = 'button';
+  removeBtn.className = 'ann-block-remove';
+  removeBtn.title = 'Remove this block';
+  removeBtn.textContent = '×';
+
+  const head = document.createElement('div');
+  head.className = 'ann-block-head';
+  head.appendChild(select);
+  head.appendChild(removeBtn);
+
+  const textarea = document.createElement('textarea');
+  textarea.className = 'ann-block-text';
+  textarea.rows = 3;
+  textarea.placeholder = 'Write the update for this subject...';
+  textarea.value = text || '';
+
+  block.appendChild(head);
+  block.appendChild(textarea);
+  return block;
+}
+
+function loadAnnBlocksFromMessage(message){
+  const container = document.getElementById('ann-blocks');
+  container.innerHTML = '';
+  const trimmed = (message || '').trim();
+  let items = null;
+  if(trimmed.startsWith('[') || trimmed.startsWith('{')){
+    try{
+      let parsed = JSON.parse(trimmed);
+      if(!Array.isArray(parsed)) parsed = [parsed];
+      const valid = parsed.filter(it => it && typeof it === 'object' && ('text' in it || 'subject' in it));
+      if(valid.length) items = valid;
+    }catch(e){ /* not JSON — treat as plain text below */ }
+  }
+  if(!items){
+    items = [{ subject:'', text: trimmed }];
+  }
+  items.forEach(it => container.appendChild(createAnnBlock(it.subject, it.text)));
+}
+
+function collectAnnBlocks(){
+  return [...document.querySelectorAll('#ann-blocks .ann-block')]
+    .map(b => ({
+      subject: b.querySelector('.ann-block-subject').value,
+      text: b.querySelector('.ann-block-text').value.trim()
+    }))
+    .filter(it => it.text);
+}
+
+document.getElementById('ann-add-block-btn').addEventListener('click', ()=>{
+  document.getElementById('ann-blocks').appendChild(createAnnBlock('', ''));
+});
+document.getElementById('ann-blocks').addEventListener('click', (e)=>{
+  const btn = e.target.closest('.ann-block-remove');
+  if(!btn) return;
+  const container = document.getElementById('ann-blocks');
+  if(container.children.length <= 1){
+    // keep at least one block visible — just clear it instead of removing
+    const block = btn.closest('.ann-block');
+    block.querySelector('.ann-block-subject').value = '';
+    block.querySelector('.ann-block-text').value = '';
+    return;
+  }
+  btn.closest('.ann-block').remove();
+});
+
+// ---------- Leaderboard config ----------
+// Paste your Supabase project URL and anon public key here:
+const SUPABASE_URL = 'https://ofxaftyfjxymycnjkydd.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_l_zZQKA3yKAGrJtYkmUYoQ_DaaaeZwA';
+const LB_CONFIGURED = !SUPABASE_URL.includes('YOUR_') && !SUPABASE_ANON_KEY.includes('YOUR_');
+const sb = LB_CONFIGURED ? supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+
+// ---------- Announcement popup ----------
+// Change this to your own secret so only you can post/edit the announcement.
+// Anyone who views page source could technically read this constant — it keeps
+// classmates from casually editing it, but it is not real server-side security.
+const ANN_ADMIN_KEY = 'EJAN-ADMIN-2026';
+const ANN_CONFIGURED = LB_CONFIGURED; // reuses the same Supabase project as the leaderboard
+let annIsAdmin = false;
+
+// ---------- Shared topics (synced across everyone via Supabase) ----------
+async function fetchSharedTopics(){
+  if(!ANN_CONFIGURED) return null;
+  try{
+    const { data, error } = await sb.from('shared_topics').select('*').eq('id', 1).maybeSingle();
+    if(error) throw error;
+    return data;
+  }catch(e){
+    console.error('Shared topics fetch failed:', e);
+    return null;
+  }
+}
+
+async function pushSharedTopics(){
+  if(!ANN_CONFIGURED) return false;
+  const updatedBy = (studentInfo && studentInfo.name) ? studentInfo.name : 'Admin';
+  try{
+    const { error } = await sb.from('shared_topics').upsert({
+      id: 1,
+      topics: topicsList,
+      updated_by: updatedBy,
+      updated_at: new Date().toISOString()
+    }, { onConflict: 'id' });
+    if(error) throw error;
+    return true;
+  }catch(e){
+    console.error('Shared topics save failed:', e);
+    alert('Could not sync topics for everyone: ' + (e.message || e));
+    return false;
+  }
+}
+
+function isAdmin(){ return annIsAdmin; }
+
+function requestAdminUnlock(){
+  if(annIsAdmin) return true;
+  const key = prompt('Enter the admin key to edit topics (same key as announcements):');
+  if(key === null) return false;
+  if(key !== ANN_ADMIN_KEY){ alert('Incorrect admin key.'); return false; }
+  annIsAdmin = true;
+  return true;
+}
+
+// ---------- Quizzes (review notes + AI-generated questions) ----------
+let quizOpenState = {}; // subject -> bool, which accordion panels are expanded
+
+async function fetchReviewNotes(subject){
+  if(!ANN_CONFIGURED) return null;
+  try{
+    const { data, error } = await sb.from('review_notes').select('*').eq('subject', subject).maybeSingle();
+    if(error) throw error;
+    return data;
+  }catch(e){ console.error('Review notes fetch failed:', e); return null; }
+}
+
+async function saveReviewNotes(subject, content){
+  if(!ANN_CONFIGURED) return false;
+  const updatedBy = (studentInfo && studentInfo.name) ? studentInfo.name : 'Admin';
+  try{
+    const { error } = await sb.from('review_notes').upsert({
+      subject, content, updated_by: updatedBy, updated_at: new Date().toISOString()
+    }, { onConflict: 'subject' });
+    if(error) throw error;
+    return true;
+  }catch(e){
+    console.error('Review notes save failed:', e);
+    alert('Could not save review notes: ' + (e.message || e));
+    return false;
+  }
+}
+
+async function fetchQuizzes(subject){
+  if(!ANN_CONFIGURED) return [];
+  try{
+    const { data, error } = await sb.from('quizzes').select('*').eq('subject', subject).order('created_at', { ascending:false });
+    if(error) throw error;
+    return data || [];
+  }catch(e){ console.error('Quizzes fetch failed:', e); return []; }
+}
+
+async function fetchQuizAttempts(subject){
+  if(!ANN_CONFIGURED) return [];
+  try{
+    const { data, error } = await sb.from('quiz_attempts').select('*').eq('subject', subject).order('submitted_at', { ascending:false }).limit(200);
+    if(error) throw error;
+    return data || [];
+  }catch(e){ console.error('Quiz attempts fetch failed:', e); return []; }
+}
+
+const MAX_QUIZ_ATTEMPTS = 1;
+
+async function fetchMyAttemptsForSubject(subject){
+  if(!ANN_CONFIGURED) return [];
+  const name = (studentInfo && studentInfo.name) ? studentInfo.name.trim() : '';
+  const id = (studentInfo && studentInfo.id) ? studentInfo.id.trim() : '';
+  if(!name && !id) return [];
+  try{
+    let query = sb.from('quiz_attempts').select('quiz_id').eq('subject', subject);
+    query = id ? query.eq('student_id', id) : query.eq('student_name', name);
+    const { data, error } = await query;
+    if(error) throw error;
+    return data || [];
+  }catch(e){ console.error('My attempts-for-subject fetch failed:', e); return []; }
+}
+
+async function renderQuizResults(subject, box){
+  box.innerHTML = '<p class="lb-msg">Loading…</p>';
+  const attempts = await fetchQuizAttempts(subject);
+  if(!attempts.length){
+    box.innerHTML = '<p class="lb-msg">No one has taken a quiz for this subject yet.</p>';
+    return;
+  }
+  box.innerHTML = attempts.map(a => `
+    <div class="quiz-list-item">
+      <div>
+        <span class="qi-title">${esc(a.student_name || 'Anonymous')}${a.student_id ? ' ('+esc(a.student_id)+')' : ''} — ${esc(a.quiz_title||'Quiz')}</span>
+        <span class="qi-meta">${a.score}/${a.total} · ${new Date(a.submitted_at).toLocaleDateString(undefined,{month:'short',day:'numeric'})} ${new Date(a.submitted_at).toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'})}</span>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function generateQuiz(subject, notes, btnEl, count, questionsPerQuiz){
+  if(!notes || !notes.trim()){ alert('Add some review notes for this subject first.'); return; }
+  count = Math.min(Math.max(parseInt(count)||1, 1), 20);
+  questionsPerQuiz = Math.min(Math.max(parseInt(questionsPerQuiz)||10, 5), 30);
+  btnEl.disabled = true;
+  const originalLabel = btnEl.textContent;
+  try{
+    const createdBy = (studentInfo && studentInfo.name) ? studentInfo.name : 'Admin';
+    btnEl.textContent = count > 1 ? `Generating ${count} quizzes…` : 'Generating…';
+    const { data, error } = await sb.functions.invoke('generate-quiz', {
+      body: { subject, notes, created_by: createdBy, count, questions_per_quiz: questionsPerQuiz }
+    });
+    if(error) throw error;
+    if(data && data.error) throw new Error(data.error);
+    await renderQuizSubjectBody(subject); // refresh list to show the new quiz(zes)
+    const made = data && typeof data.created === 'number' ? data.created : count;
+    const failed = (data && data.errors && data.errors.length) || 0;
+    alert(`Generated ${made} quiz${made===1?'':'zes'}.` + (failed ? ` ${failed} failed — try again for those.` : ''));
+  }catch(e){
+    console.error('Quiz generation failed:', e);
+    alert('Could not generate quiz: ' + (e.message || e));
+  }finally{
+    btnEl.disabled = false;
+    btnEl.textContent = originalLabel;
+  }
+}
+
+// ---------- Class Board (shared message wall, self-cleaning after 24h) ----------
+const BOARD_MY_POSTS_KEY = 'uv-bsa-my-board-posts';
+const BOARD_PRUNE_KEY = 'uv-bsa-board-last-prune';
+let boardAutoRefreshTimer = null;
+let boardModOn = false;
+
+function getMyBoardPostIds(){
+  try{ return JSON.parse(localStorage.getItem(BOARD_MY_POSTS_KEY) || '[]'); }catch(e){ return []; }
+}
+function rememberMyBoardPost(id){
+  const ids = getMyBoardPostIds();
+  ids.push(id);
+  localStorage.setItem(BOARD_MY_POSTS_KEY, JSON.stringify(ids.slice(-500)));
+}
+
+async function pruneOldBoardMessages(){
+  if(!ANN_CONFIGURED) return;
+  const last = parseInt(localStorage.getItem(BOARD_PRUNE_KEY) || '0', 10);
+  const now = Date.now();
+  if(now - last < 5 * 60 * 1000) return; // throttle: at most once every 5 minutes per browser
+  localStorage.setItem(BOARD_PRUNE_KEY, String(now));
+  const cutoff = new Date(now - 24 * 60 * 60 * 1000).toISOString();
+  try{
+    await sb.from('board_messages').delete().lt('posted_at', cutoff);
+  }catch(e){ console.error('Board prune failed:', e); }
+}
+
+async function fetchBoardMessages(){
+  if(!ANN_CONFIGURED) return [];
+  await pruneOldBoardMessages();
+  try{
+    let query = sb.from('board_messages').select('*');
+    query = applyYearFilter(query, 'year_level');
+    const { data, error } = await query.order('posted_at', { ascending:false }).limit(150);
+    if(error) throw error;
+    return data || [];
+  }catch(e){ console.error('Board fetch failed:', e); return []; }
+}
+
+async function postBoardMessage(){
+  const ta = document.getElementById('board-textarea');
+  const text = ta.value.trim();
+  if(!text) return;
+  const anon = document.getElementById('board-anon-check').checked;
+  const name = (!anon && studentInfo && studentInfo.name) ? studentInfo.name.trim() : '';
+  try{
+    const { data, error } = await sb.from('board_messages').insert({
+      name: name || 'Anonymous',
+      message: text.slice(0, 600),
+      year_level: currentYearLevel()
+    }).select().single();
+    if(error) throw error;
+    if(data && data.id) rememberMyBoardPost(data.id);
+    ta.value = '';
+    document.getElementById('board-char-count').textContent = '0 / 600';
+    await renderBoard();
+  }catch(e){
+    console.error('Board post failed:', e);
+    alert('Could not post: ' + (e.message || e));
+  }
+}
+
+async function deleteBoardMessage(id){
+  if(!confirm('Delete this post?')) return;
+  try{
+    const { error } = await sb.from('board_messages').delete().eq('id', id);
+    if(error) throw error;
+    await renderBoard();
+  }catch(e){
+    console.error('Board delete failed:', e);
+    alert('Could not delete: ' + (e.message || e));
+  }
+}
+
+async function renderBoard(){
+  const box = document.getElementById('board-body');
+  if(!ANN_CONFIGURED){
+    box.innerHTML = '<p class="lb-msg">Board isn\'t connected yet — Supabase isn\'t configured.</p>';
+    return;
+  }
+  const mine = getMyBoardPostIds();
+  const msgs = await fetchBoardMessages();
+  if(!msgs.length){
+    box.innerHTML = '<p class="lb-msg">No posts yet — be the first!</p>';
+    return;
+  }
+  box.innerHTML = msgs.map(m => {
+    const isAnon = !m.name || m.name === 'Anonymous';
+    const canDelete = boardModOn || mine.includes(m.id);
+    const d = new Date(m.posted_at);
+    const stamp = d.toLocaleDateString(undefined,{month:'short',day:'numeric'}) + ' · ' + d.toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'});
+    return `
+      <div class="board-post">
+        <div class="board-post-head">
+          <span class="board-post-name${isAnon?' anon':''}">${esc(isAnon ? 'Anonymous' : m.name)}</span>
+          <span class="board-post-meta">${stamp}${canDelete ? ` · <button class="board-del-btn" data-id="${m.id}">delete</button>` : ''}</span>
+        </div>
+        <div class="board-post-body">${esc(m.message)}</div>
+      </div>
+    `;
+  }).join('');
+  box.querySelectorAll('.board-del-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=> deleteBoardMessage(parseInt(btn.dataset.id, 10)));
+  });
+}
+
+function startBoardAutoRefresh(){
+  stopBoardAutoRefresh();
+  boardAutoRefreshTimer = setInterval(renderBoard, 15000);
+}
+function stopBoardAutoRefresh(){
+  if(boardAutoRefreshTimer){ clearInterval(boardAutoRefreshTimer); boardAutoRefreshTimer = null; }
+}
+
+document.getElementById('board-textarea').addEventListener('input', (e)=>{
+  document.getElementById('board-char-count').textContent = `${e.target.value.length} / 600`;
+});
+document.getElementById('board-textarea').addEventListener('keydown', (e)=>{
+  if((e.ctrlKey || e.metaKey) && e.key === 'Enter'){ e.preventDefault(); postBoardMessage(); }
+});
+document.getElementById('board-post-btn').addEventListener('click', postBoardMessage);
+document.getElementById('board-refresh-btn').addEventListener('click', renderBoard);
+document.getElementById('board-mod-btn').addEventListener('click', ()=>{
+  if(!boardModOn){
+    if(!requestAdminUnlock()) return;
+    boardModOn = true;
+    document.getElementById('board-mod-btn').textContent = '🔓 Moderating';
+  } else {
+    boardModOn = false;
+    document.getElementById('board-mod-btn').textContent = '🔒 Moderate';
+  }
+  renderBoard();
+});
+
+async function renderQuizzesPanel(){
+  const body = document.getElementById('quizzes-body');
+  body.innerHTML = '';
+  for(const subj of SUBJECT_NAMES){
+    const block = document.createElement('div');
+    block.className = 'quiz-subject-block';
+    const isOpen = !!quizOpenState[subj];
+    block.innerHTML = `
+      <div class="quiz-subject-head">
+        <span>${isOpen ? '▾' : '▸'} ${esc(subj)}</span>
+      </div>
+      <div class="quiz-subject-body ${isOpen?'open':''}" id="quiz-body-${cssId(subj)}">
+        <p class="lb-msg">Loading…</p>
+      </div>
+    `;
+    block.querySelector('.quiz-subject-head').addEventListener('click', async ()=>{
+      quizOpenState[subj] = !quizOpenState[subj];
+      renderQuizzesPanel();
+    });
+    body.appendChild(block);
+    if(isOpen) await renderQuizSubjectBody(subj);
+  }
+}
+
+function cssId(s){ return s.replace(/[^a-zA-Z0-9]/g, '_'); }
+
+async function fetchMyQuizAttempts(){
+  if(!ANN_CONFIGURED) return [];
+  const name = (studentInfo && studentInfo.name) ? studentInfo.name.trim() : '';
+  const id = (studentInfo && studentInfo.id) ? studentInfo.id.trim() : '';
+  if(!name && !id) return [];
+  try{
+    let query = sb.from('quiz_attempts').select('*').order('submitted_at', { ascending:false }).limit(200);
+    if(id) query = query.eq('student_id', id);
+    else query = query.eq('student_name', name);
+    const { data, error } = await query;
+    if(error) throw error;
+    return data || [];
+  }catch(e){ console.error('My quiz attempts fetch failed:', e); return []; }
+}
+
+async function renderMyScores(){
+  const box = document.getElementById('my-scores-body');
+  const name = (studentInfo && studentInfo.name) ? studentInfo.name.trim() : '';
+  if(!name){
+    box.innerHTML = '<p class="lb-msg">Fill in your Name on the cover first so your quiz history can be tracked.</p>';
+    return;
+  }
+  box.innerHTML = '<p class="lb-msg">Loading…</p>';
+  const attempts = await fetchMyQuizAttempts();
+  if(!attempts.length){
+    box.innerHTML = '<p class="lb-msg">You haven\'t taken any quizzes yet.</p>';
+    return;
+  }
+
+  // Per-subject average: group attempts by subject, average their score/total %.
+  const bySubject = {};
+  attempts.forEach(a=>{
+    if(!a.total) return; // skip malformed rows
+    if(!bySubject[a.subject]) bySubject[a.subject] = [];
+    bySubject[a.subject].push(a.score / a.total);
+  });
+  const avgHtml = Object.keys(bySubject).length ? `
+    <div class="quiz-avg-summary">
+      ${Object.keys(bySubject).map(subj=>{
+        const pcts = bySubject[subj];
+        const avgPct = Math.round((pcts.reduce((a,b)=>a+b,0) / pcts.length) * 100);
+        return `<div class="quiz-avg-item"><span class="quiz-avg-pct">${avgPct}%</span><span class="quiz-avg-label">${esc(subj)} · ${pcts.length} attempt${pcts.length===1?'':'s'}</span></div>`;
+      }).join('')}
+    </div>
+  ` : '';
+
+  box.innerHTML = avgHtml + attempts.map((a, idx) => `
+    <div class="quiz-list-item">
+      <div>
+        <span class="qi-title">${esc(a.subject)} — ${esc(a.quiz_title||'Quiz')}</span>
+        <span class="qi-meta">${new Date(a.submitted_at).toLocaleDateString(undefined,{month:'short',day:'numeric'})} ${new Date(a.submitted_at).toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'})}</span>
+      </div>
+      <div style="display:flex; align-items:center; gap:10px;">
+        <span class="qi-title">${a.score}/${a.total}</span>
+        <button class="quiz-take-btn" data-review-idx="${idx}">Review</button>
+      </div>
+    </div>
+  `).join('');
+  box.querySelectorAll('[data-review-idx]').forEach(btn=>{
+    btn.addEventListener('click', ()=> reviewPastAttempt(attempts[parseInt(btn.dataset.reviewIdx, 10)]));
+  });
+}
+
+document.getElementById('my-scores-toggle').addEventListener('click', async (e)=>{
+  const box = document.getElementById('my-scores-body');
+  const showing = box.style.display === 'block';
+  box.style.display = showing ? 'none' : 'block';
+  e.target.textContent = showing ? '▾ Show' : '▴ Hide';
+  if(!showing) await renderMyScores();
+});
+
+
+async function renderQuizSubjectBody(subj){
+  const el = document.getElementById('quiz-body-' + cssId(subj));
+  if(!el) return;
+  const notesRow = await fetchReviewNotes(subj);
+  const notesText = (notesRow && notesRow.content) || '';
+  const quizzes = await fetchQuizzes(subj);
+
+  // Count this student's past attempts per quiz, to enforce the attempt limit.
+  // Admins are exempt so they can freely test-take quizzes they generate.
+  const attemptCounts = {};
+  if(!isAdmin()){
+    const myAttempts = await fetchMyAttemptsForSubject(subj);
+    myAttempts.forEach(a=>{ attemptCounts[a.quiz_id] = (attemptCounts[a.quiz_id]||0) + 1; });
+  }
+
+  let notesHtml;
+  if(isAdmin()){
+    notesHtml = `
+      <div class="quiz-notes-label">Review notes (admin-editable, visible to everyone)</div>
+      <textarea class="quiz-notes-textarea" id="notes-ta-${cssId(subj)}" placeholder="Paste or type your review notes for ${esc(subj)}...">${esc(notesText)}</textarea>
+      <div class="quiz-btn-row">
+        <button class="quiz-gen-btn" id="save-notes-${cssId(subj)}">Save Notes</button>
+        <span style="font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--ink-soft); align-self:center;">quizzes:</span>
+        <input type="number" id="qty-${cssId(subj)}" min="1" max="20" value="1" style="width:52px; padding:7px; border-radius:16px; border:1px solid var(--paper-line-strong); text-align:center; font-family:'IBM Plex Mono',monospace; font-size:12px;" title="How many separate quizzes to generate" />
+        <span style="font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--ink-soft); align-self:center;">questions each:</span>
+        <input type="number" id="qcount-${cssId(subj)}" min="5" max="30" step="5" value="10" style="width:52px; padding:7px; border-radius:16px; border:1px solid var(--paper-line-strong); text-align:center; font-family:'IBM Plex Mono',monospace; font-size:12px;" title="How many questions per quiz — lower this for easier subjects" />
+        <button class="quiz-gen-btn" id="gen-quiz-${cssId(subj)}">✨ Generate</button>
+      </div>
+      <p class="lb-msg" style="text-align:left; padding:0; margin:0 0 10px;">Tip: for easier subjects, set "questions each" to 10 and "quizzes" to 1 — one short quiz instead of a full batch.</p>
+    `;
+  } else {
+    notesHtml = `
+      <div class="quiz-notes-label">Review notes</div>
+      <div class="quiz-notes-view">${notesText ? esc(notesText) : 'No review notes posted yet for this subject.'}</div>
+    `;
+  }
+
+  const quizzesHtml = quizzes.length
+    ? (() => {
+        // Once a student has used their attempt, that quiz disappears from this list entirely —
+        // it's still reachable afterward via "Review" in their My Quiz History. Admins see everything.
+        const visibleQuizzes = isAdmin() ? quizzes : quizzes.filter(q => (attemptCounts[q.id]||0) < MAX_QUIZ_ATTEMPTS);
+        if(!visibleQuizzes.length){
+          return '<p class="lb-msg">No quizzes left to take here — check My Quiz History above to review ones you\'ve completed.</p>';
+        }
+        return visibleQuizzes.map(q => `
+          <div class="quiz-list-item">
+            <div>
+              <span class="qi-title">${esc(q.title || 'Quiz')}</span>
+              <span class="qi-meta">${(q.questions||[]).length} questions · ${new Date(q.created_at).toLocaleDateString(undefined,{month:'short',day:'numeric'})}</span>
+            </div>
+            <button class="quiz-take-btn" data-quiz-id="${q.id}">Take Quiz</button>
+          </div>
+        `).join('');
+      })()
+    : '<p class="lb-msg">No quizzes generated yet for this subject.</p>';
+
+  const resultsHtml = isAdmin() ? `
+    <div style="margin-top:16px; border-top:1px dashed var(--paper-line-strong); padding-top:12px;">
+      <button class="quiz-gen-btn" id="results-toggle-${cssId(subj)}">📊 View Results</button>
+      <div id="results-body-${cssId(subj)}" style="display:none; margin-top:10px;"></div>
+    </div>
+  ` : '';
+
+  el.innerHTML = notesHtml + '<div style="margin-top:14px;">' + quizzesHtml + '</div>' + resultsHtml;
+
+  if(isAdmin()){
+    document.getElementById('save-notes-'+cssId(subj)).addEventListener('click', async ()=>{
+      const val = document.getElementById('notes-ta-'+cssId(subj)).value;
+      const ok = await saveReviewNotes(subj, val);
+      if(ok) alert('Notes saved for everyone.');
+    });
+    document.getElementById('gen-quiz-'+cssId(subj)).addEventListener('click', (e)=>{
+      const val = document.getElementById('notes-ta-'+cssId(subj)).value;
+      const qty = document.getElementById('qty-'+cssId(subj)).value;
+      const qcount = document.getElementById('qcount-'+cssId(subj)).value;
+      generateQuiz(subj, val, e.target, qty, qcount);
+    });
+    document.getElementById('results-toggle-'+cssId(subj)).addEventListener('click', async (e)=>{
+      const box = document.getElementById('results-body-'+cssId(subj));
+      const showing = box.style.display === 'block';
+      box.style.display = showing ? 'none' : 'block';
+      e.target.textContent = showing ? '📊 View Results' : '📊 Hide Results';
+      if(!showing) await renderQuizResults(subj, box);
+    });
+  }
+  el.querySelectorAll('.quiz-take-btn').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      if(btn.disabled) return;
+      const quiz = quizzes.find(q => String(q.id) === btn.dataset.quizId);
+      if(!quiz) return;
+      if(!isAdmin()){
+        // Re-check right before opening, in case another attempt was logged since this list rendered.
+        const mine = await fetchMyAttemptsForSubject(subj);
+        const usedNow = mine.filter(a => String(a.quiz_id) === String(quiz.id)).length;
+        if(usedNow >= MAX_QUIZ_ATTEMPTS){
+          alert(`You've already used your ${MAX_QUIZ_ATTEMPTS} attempts for this quiz.`);
+          await renderQuizSubjectBody(subj); // refresh so the button reflects the current state
+          return;
+        }
+      }
+      openQuizTaker(quiz, subj);
+    });
+  });
+}
+
+let currentQuizTaking = null;
+let currentQuizSubject = null;
+
+function openQuizTaker(quiz, subject){
+  currentQuizTaking = quiz;
+  currentQuizSubject = subject;
+  document.getElementById('quiz-take-subject').textContent = subject;
+  document.getElementById('quiz-take-title').textContent = quiz.title || 'Quiz';
+  const qBody = document.getElementById('quiz-take-body');
+  qBody.innerHTML = (quiz.questions||[]).map((q, qi) => `
+    <div class="quiz-q-block" data-qi="${qi}">
+      <p class="qtext">${qi+1}. ${esc(q.question)}</p>
+      ${(q.choices||[]).map((c, ci) => `
+        <label class="quiz-choice">
+          <input type="radio" name="q${qi}" value="${ci}" />
+          ${esc(c)}
+        </label>
+      `).join('')}
+    </div>
+  `).join('');
+  document.getElementById('quiz-submit-btn').style.display = 'inline-block';
+  document.getElementById('quiz-take-overlay').style.display = 'flex';
+}
+
+async function logQuizAttempt(quiz, subject, score, total, answers){
+  if(!ANN_CONFIGURED) return;
+  try{
+    const { error } = await sb.from('quiz_attempts').insert({
+      quiz_id: quiz.id,
+      subject,
+      quiz_title: quiz.title || 'Quiz',
+      student_name: (studentInfo && studentInfo.name) ? studentInfo.name : 'Anonymous',
+      student_id: (studentInfo && studentInfo.id) ? studentInfo.id : null,
+      score, total, answers,
+      submitted_at: new Date().toISOString()
+    });
+    if(error) console.error('Quiz attempt log failed:', error);
+  }catch(e){ console.error('Quiz attempt log failed:', e); }
+}
+
+// Renders the grade view (correct/wrong highlighting + explanations) into quiz-take-body.
+// Used both right after submitting, and later when reopening via "Review".
+function renderQuizGradeView(questions, pickedAnswers){
+  const qBody = document.getElementById('quiz-take-body');
+  qBody.innerHTML = questions.map((q, qi) => {
+    const pickedVal = pickedAnswers[qi];
+    const choicesHtml = (q.choices||[]).map((c, ci) => {
+      let cls = 'quiz-choice';
+      if(ci === q.correct_index) cls += ' correct';
+      else if(ci === pickedVal) cls += ' wrong-picked';
+      return `<label class="${cls}"><input type="radio" disabled ${ci===pickedVal?'checked':''} /> ${esc(c)}</label>`;
+    }).join('');
+    const explainHtml = q.explanation ? `<p class="quiz-explain">${esc(q.explanation)}</p>` : '';
+    return `<div class="quiz-q-block" data-qi="${qi}"><p class="qtext">${qi+1}. ${esc(q.question)}</p>${choicesHtml}${explainHtml}</div>`;
+  }).join('');
+}
+
+function openQuizReview(attempt, quiz){
+  currentQuizTaking = null; // review mode — submit button must stay inert
+  document.getElementById('quiz-take-subject').textContent = attempt.subject;
+  document.getElementById('quiz-take-title').textContent = (quiz.title || attempt.quiz_title || 'Quiz') + ' — Review';
+  renderQuizGradeView(quiz.questions || [], attempt.answers || []);
+  const scoreEl = document.createElement('p');
+  scoreEl.className = 'quiz-score';
+  scoreEl.textContent = `Score: ${attempt.score} / ${attempt.total}`;
+  document.getElementById('quiz-take-body').prepend(scoreEl);
+  document.getElementById('quiz-submit-btn').style.display = 'none';
+  document.getElementById('quiz-take-overlay').style.display = 'flex';
+}
+
+async function reviewPastAttempt(attempt){
+  if(!ANN_CONFIGURED) return;
+  try{
+    const { data, error } = await sb.from('quizzes').select('*').eq('id', attempt.quiz_id).maybeSingle();
+    if(error) throw error;
+    if(!data){ alert('This quiz no longer exists, so it can\'t be reviewed.'); return; }
+    openQuizReview(attempt, data);
+  }catch(e){
+    console.error('Review fetch failed:', e);
+    alert('Could not load this quiz for review: ' + (e.message || e));
+  }
+}
+
+document.getElementById('quiz-submit-btn').addEventListener('click', ()=>{
+  if(!currentQuizTaking) return;
+  const questions = currentQuizTaking.questions || [];
+  let score = 0;
+  const answers = [];
+  questions.forEach((q, qi) => {
+    const picked = document.querySelector(`input[name="q${qi}"]:checked`);
+    const pickedVal = picked ? parseInt(picked.value, 10) : -1;
+    answers.push(pickedVal);
+    if(pickedVal === q.correct_index) score++;
+  });
+  renderQuizGradeView(questions, answers);
+  const scoreEl = document.createElement('p');
+  scoreEl.className = 'quiz-score';
+  scoreEl.textContent = `Score: ${score} / ${questions.length}`;
+  document.getElementById('quiz-take-body').prepend(scoreEl);
+  document.getElementById('quiz-submit-btn').style.display = 'none';
+  logQuizAttempt(currentQuizTaking, currentQuizSubject, score, questions.length, answers);
+  currentQuizTaking = null; // prevent accidental double-submit if they somehow click again
+});
+document.getElementById('quiz-close-btn').addEventListener('click', ()=>{
+  closeOverlay('quiz-take-overlay');
+  currentQuizTaking = null;
+});
+
+// 3rd Year keeps the original announcement row (id 1) so nothing changes for the
+// existing class. 1st Year gets its own separate row (id 2) — a fully separate
+// "section" of the announcement tab that only 1st Year students see.
+function announcementRowId(){ return currentYearLevel()==='1st' ? 2 : 1; }
+
+async function fetchAnnouncement(){
+  if(!ANN_CONFIGURED) return null;
+  try{
+    const { data, error } = await sb.from('announcements').select('*').eq('id', announcementRowId()).maybeSingle();
+    if(error) throw error;
+    return data;
+  }catch(e){
+    console.error('Announcement fetch failed:', e);
+    return null;
+  }
+}
+
+async function saveAnnouncement(message){
+  if(!ANN_CONFIGURED) return false;
+  const postedBy = (studentInfo && studentInfo.name) ? studentInfo.name : 'Admin';
+  const now = new Date().toISOString();
+  const yl = currentYearLevel();
+  try{
+    const { error } = await sb.from('announcements').upsert({
+      id: announcementRowId(),
+      message,
+      posted_by: postedBy,
+      updated_at: now
+    }, { onConflict: 'id' });
+    if(error) throw error;
+
+    // also append to the permanent log so past announcements stay visible
+    if(message && message.trim()){
+      const { error: logErr } = await sb.from('announcement_log').insert({
+        message, posted_by: postedBy, posted_at: now, year_level: yl
+      });
+      if(logErr) console.error('Announcement log insert failed:', logErr);
+    }
+    return true;
+  }catch(e){
+    console.error('Announcement save failed:', e);
+    alert('Could not post announcement: ' + (e.message || e));
+    return false;
+  }
+}
+
+async function fetchAnnouncementLog(){
+  if(!ANN_CONFIGURED) return [];
+  try{
+    let query = sb.from('announcement_log').select('*');
+    query = applyYearFilter(query, 'year_level');
+    const { data, error } = await query.order('posted_at', { ascending:false }).limit(50);
+    if(error) throw error;
+    return data || [];
+  }catch(e){
+    console.error('Announcement log fetch failed:', e);
+    return [];
+  }
+}
+
+function setAnnMode(mode){ // 'view' | 'edit' | 'log'
+  document.getElementById('ann-view-mode').style.display = mode==='view' ? 'block' : 'none';
+  document.getElementById('ann-edit-mode').style.display = mode==='edit' ? 'block' : 'none';
+  document.getElementById('ann-log-mode').style.display = mode==='log' ? 'block' : 'none';
+}
+
+async function showAnnouncementLog(){
+  setAnnMode('log');
+  const box = document.getElementById('ann-log-list');
+  box.innerHTML = '<p class="lb-msg" style="color:rgba(255,255,255,.6);">Loading…</p>';
+  const rows = await fetchAnnouncementLog();
+  if(!rows.length){
+    box.innerHTML = '<p class="lb-msg" style="color:rgba(255,255,255,.6);">No past announcements yet.</p>';
+    return;
+  }
+  box.innerHTML = rows.map(r=>{
+    const d = new Date(r.posted_at);
+    const stamp = d.toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'}) + ' · ' + d.toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'});
+    return `<div class="ann-log-item"><div>${announcementBodyHTML(r.message)}</div><span>${esc(r.posted_by||'Admin')} · ${stamp}</span></div>`;
+  }).join('');
+}
+
+function annMetaLine(row){
+  if(!row || !row.updated_at) return '';
+  const d = new Date(row.updated_at);
+  const stamp = d.toLocaleDateString(undefined,{month:'short',day:'numeric'}) + ' · ' + d.toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'});
+  return `Posted by ${esc(row.posted_by||'Admin')} · ${stamp}`;
+}
+
+function setAnnEditMode(on){
+  setAnnMode(on ? 'edit' : 'view');
+}
+
+// Loads whichever year's announcement is currently selected into the already-open
+// modal (used both on open and whenever the Year Level popup changes the year).
+async function loadAnnouncementIntoModal(){
+  document.getElementById('ann-modal-body').innerHTML = 'Loading…';
+  const row = await fetchAnnouncement();
+  const hasMessage = !!(row && row.message && row.message.trim());
+  renderAnnouncementBody(hasMessage ? row.message : 'No announcement posted yet for ' + (currentYearLevel()==='1st' ? '1st Year' : '3rd Year') + '.');
+  document.getElementById('ann-modal-meta').textContent = hasMessage ? annMetaLine(row) : '';
+  loadAnnBlocksFromMessage(hasMessage ? row.message : '');
+  return { row, hasMessage };
+}
+
+async function openAnnouncementModal(auto){
+  const overlay = document.getElementById('ann-modal-overlay');
+  if(!ANN_CONFIGURED){
+    if(auto){ if(auto==='initial') maybeShowNudge(); return; } // nothing to show automatically if Supabase isn't set up
+    alert("Announcements aren't connected yet — add your Supabase URL and key in the code.");
+    return;
+  }
+  const row = await fetchAnnouncement();
+  const hasMessage = !!(row && row.message && row.message.trim());
+  if(auto && !hasMessage){ if(auto==='initial') maybeShowNudge(); return; } // don't pop up on load if there's nothing posted
+
+  setAnnEditMode(false);
+  renderAnnouncementBody(hasMessage ? row.message : 'No announcement posted yet.');
+  document.getElementById('ann-modal-meta').textContent = hasMessage ? annMetaLine(row) : '';
+  loadAnnBlocksFromMessage(hasMessage ? row.message : '');
+  overlay.style.display = 'flex';
+
+  if(auto === 'initial'){
+    // show the personal nudge right after they dismiss the announcement, not stacked on top of it
+    const closeBtn = document.getElementById('ann-modal-close');
+    const onClose = ()=>{ closeBtn.removeEventListener('click', onClose); maybeShowNudge(); };
+    closeBtn.addEventListener('click', onClose);
+  }
+}
+
+// ---------- Year Level popup (asks 1st Year or 3rd Year instead of a dropdown) ----------
+// Returns a promise that resolves once the student has picked a year (used to block
+// first-launch init until they've chosen). If a year is already saved, resolves immediately.
+function showYearPicker(){
+  return new Promise(resolve=>{
+    const overlay = document.getElementById('year-picker-overlay');
+    overlay.style.display = 'flex';
+    const btn1st = document.getElementById('year-pick-1st');
+    const btn3rd = document.getElementById('year-pick-3rd');
+    const pick = async (choice)=>{
+      btn1st.removeEventListener('click', on1st);
+      btn3rd.removeEventListener('click', on3rd);
+      await setYearLevel(choice);
+      closeOverlay('year-picker-overlay');
+      resolve(choice);
+    };
+    const on1st = ()=> pick('1st');
+    const on3rd = ()=> pick('3rd');
+    btn1st.addEventListener('click', on1st);
+    btn3rd.addEventListener('click', on3rd);
+  });
+}
+
+document.getElementById('year-level-badge').addEventListener('click', ()=> showYearPicker());
+
+// ---------- Shared overlay close animation (fade + scale out before hiding) ----------
+function closeOverlay(id){
+  const el = document.getElementById(id);
+  if(!el || el.style.display === 'none') return;
+  el.classList.add('closing');
+  setTimeout(()=>{
+    el.style.display = 'none';
+    el.classList.remove('closing');
+  }, 170);
+}
+
+// ---------- Personalized progress nudge (shown at most once per day, after the announcement) ----------
+function computeMonthStats(){
+  const now = new Date();
+  const year = now.getFullYear(), month = now.getMonth();
+  const daySet = new Set();
+  let hours = 0;
+  logEntries.forEach(e=>{
+    if(!e.date) return;
+    const d = new Date(e.date + 'T00:00:00');
+    if(d.getFullYear()===year && d.getMonth()===month){
+      daySet.add(e.date);
+      hours += parseFloat(e.hours) || 0;
+    }
+  });
+  return { daysStudied: daySet.size, hours, dayOfMonth: now.getDate() };
+}
+
+function maybeShowNudge(){
+  const todayStr = new Date().toISOString().slice(0,10);
+  if(localStorage.getItem('uv-bsa-nudge-date') === todayStr) return;
+  localStorage.setItem('uv-bsa-nudge-date', todayStr);
+
+  const streak = computeStudyStreak();
+  const ms = computeMonthStats();
+  const monthName = new Date().toLocaleString('default',{ month:'long' });
+  const monthLine = `This ${monthName} you've logged ${ms.hours.toFixed(1)}h across ${ms.daysStudied} day${ms.daysStudied===1?'':'s'}.`;
+
+  const dates = [...new Set(logEntries.map(e=>e.date).filter(Boolean))].sort();
+  let daysSinceLog = null;
+  if(dates.length){
+    const last = new Date(dates[dates.length-1] + 'T00:00:00');
+    const now = new Date(); now.setHours(0,0,0,0);
+    daysSinceLog = Math.round((now - last) / 86400000);
+  }
+
+  // hours logged in the last 7 days (rolling week) — the other study-log-based signal, alongside monthly totals
+  const sevenDaysAgo = new Date(); sevenDaysAgo.setHours(0,0,0,0); sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
+  const weeklyHours = logEntries
+    .filter(e => e.date && new Date(e.date + 'T00:00:00') >= sevenDaysAgo)
+    .reduce((a,b)=> a + (parseFloat(b.hours)||0), 0);
+
+  const firstName = (studentInfo && studentInfo.name) ? studentInfo.name.trim().split(' ')[0] : '';
+  const greet = firstName ? `Hi ${firstName}!` : 'Hi!';
+
+  let eyebrow, title, body;
+  if(dates.length === 0){
+    eyebrow = "LET'S GET STARTED";
+    title = "No study time logged yet";
+    body = `${greet} You need to study more — log your first session in the Study Log tab. Even 30 minutes counts toward your streak.`;
+  } else if(ms.hours === 0){
+    eyebrow = 'FRESH START';
+    title = `No sessions logged this ${monthName}`;
+    body = `${greet} You've studied before, but nothing yet this ${monthName} — log a session today to get this month's streak going.`;
+  } else if(daysSinceLog >= 5){
+    eyebrow = 'MISSED YOU';
+    title = `It's been ${daysSinceLog} days`;
+    body = `${greet} Your last logged session was ${daysSinceLog} days ago. ${monthLine} A short session today keeps things from piling up before exams.`;
+  } else if(weeklyHours < 2){
+    eyebrow = 'LOW HOURS THIS WEEK';
+    title = `${weeklyHours.toFixed(1)}h logged this week`;
+    body = `${greet} ${monthLine} Only ${weeklyHours.toFixed(1)} hour${weeklyHours===1?'':'s'} this past week — try adding a session today.`;
+  } else if(daysSinceLog >= 2){
+    eyebrow = 'GENTLE REMINDER';
+    title = "Haven't logged in a couple days";
+    body = `${greet} ${monthLine} A quick session today keeps your streak alive.`;
+  } else if(streak >= 3 && weeklyHours >= 5){
+    eyebrow = 'ON TRACK';
+    title = `${streak}-day streak, ${weeklyHours.toFixed(1)}h this week`;
+    body = `${greet} ${monthLine} Great pace this ${monthName} — keep this up and you'll be exam-ready well ahead of time.`;
+  } else {
+    eyebrow = 'STEADY PROGRESS';
+    title = `${weeklyHours.toFixed(1)}h logged this week`;
+    body = `${greet} ${monthLine} You're logging sessions consistently — keep it going.`;
+  }
+
+  document.getElementById('nudge-eyebrow').textContent = eyebrow;
+  document.getElementById('nudge-title').textContent = title;
+  document.getElementById('nudge-body').textContent = body;
+  document.getElementById('nudge-overlay').style.display = 'flex';
+}
+document.getElementById('nudge-close-btn').addEventListener('click', ()=>{
+  closeOverlay('nudge-overlay');
+});
+
+document.getElementById('ann-open-btn').addEventListener('click', ()=> openAnnouncementModal(false));
+
+// ---------- Daily push notification opt-in ----------
+// Paste the VAPID public key you generated (same one used in the Edge Function's VAPID_PUBLIC_KEY secret).
+const VAPID_PUBLIC_KEY = 'BAqS7fQKVOOhxyZ1FbCCZoyzgFDjMIa2GRUGJDQ9ySnOuzDvVav-RblphHcKeaMvxN4rutaVfZq6nTAE-9xQEK0';
+
+function urlBase64ToUint8Array(base64String){
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding).replace(/-/g,'+').replace(/_/g,'/');
+  const raw = atob(base64);
+  return Uint8Array.from([...raw].map(c=>c.charCodeAt(0)));
+}
+
+async function updateNotifBtnLabel(){
+  const btn = document.getElementById('notif-btn');
+  if(!('Notification' in window) || !('serviceWorker' in navigator) || !('PushManager' in window)){
+    btn.textContent = '🔔 Not supported here';
+    btn.disabled = true;
+    return;
+  }
+  if(Notification.permission === 'granted'){
+    const reg = await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.getSubscription();
+    btn.textContent = sub ? '🔔 Daily reminder: ON' : '🔔 Daily reminder';
+    if(sub) await syncPushSubscriptionName(sub); // backfill name/id if this device was subscribed before they filled those in
+  } else {
+    btn.textContent = '🔔 Daily reminder';
+  }
+}
+
+async function syncPushSubscriptionName(sub){
+  if(!ANN_CONFIGURED) return;
+  const name = (document.getElementById('f-name').value || '').trim();
+  if(!name) return; // nothing to fix yet
+  try{
+    const subJson = sub.toJSON();
+    await sb.from('push_subscriptions').update({
+      student_id: (document.getElementById('f-id').value || '').trim() || null,
+      student_name: name,
+      updated_at: new Date().toISOString()
+    }).eq('endpoint', subJson.endpoint);
+  }catch(e){ console.error('Push subscription name sync failed:', e); }
+}
+
+document.getElementById('notif-btn').addEventListener('click', async ()=>{
+  if(!ANN_CONFIGURED){ alert("Notifications aren't connected yet — Supabase isn't configured."); return; }
+  if(!('serviceWorker' in navigator) || !('PushManager' in window)){
+    alert('Push notifications are not supported in this browser.');
+    return;
+  }
+  const nameCheck = (document.getElementById('f-name').value || '').trim();
+  if(!nameCheck){
+    alert('Fill in your Name at the top first — that\'s how your reminder gets addressed to you.');
+    document.getElementById('f-name').focus();
+    return;
+  }
+  try{
+    const perm = await Notification.requestPermission();
+    if(perm !== 'granted'){ alert('Notifications permission was not granted.'); return; }
+    const reg = await navigator.serviceWorker.ready;
+    let sub = await reg.pushManager.getSubscription();
+    if(!sub){
+      sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+      });
+    }
+    const name = (document.getElementById('f-name').value || '').trim();
+    const sid = (document.getElementById('f-id').value || '').trim();
+    const subJson = sub.toJSON();
+    const { error } = await sb.from('push_subscriptions').upsert({
+      endpoint: subJson.endpoint,
+      p256dh: subJson.keys.p256dh,
+      auth: subJson.keys.auth,
+      student_id: sid || null,
+      student_name: name || null,
+      updated_at: new Date().toISOString()
+    }, { onConflict: 'endpoint' });
+    if(error) throw error;
+    alert("You're set — you'll get a daily reminder on this device.");
+    updateNotifBtnLabel();
+  }catch(e){
+    console.error('Push subscribe failed:', e);
+    alert('Could not turn on reminders: ' + (e.message || e));
+  }
+});
+updateNotifBtnLabel();
+
+document.getElementById('ann-modal-close').addEventListener('click', ()=>{
+  closeOverlay('ann-modal-overlay');
+});
+document.getElementById('ann-edit-toggle').addEventListener('click', ()=>{
+  if(!annIsAdmin){
+    const key = prompt('Enter the admin key to post/edit the announcement:');
+    if(key === null) return;
+    if(key !== ANN_ADMIN_KEY){ alert('Incorrect admin key.'); return; }
+    annIsAdmin = true;
+  }
+  setAnnEditMode(true);
+});
+document.getElementById('ann-cancel-btn').addEventListener('click', ()=> setAnnEditMode(false));
+document.getElementById('ann-log-toggle').addEventListener('click', showAnnouncementLog);
+document.getElementById('ann-log-back').addEventListener('click', ()=> setAnnMode('view'));
+document.getElementById('ann-save-btn').addEventListener('click', async ()=>{
+  const items = collectAnnBlocks();
+  const text = items.length ? JSON.stringify(items) : '';
+  const ok = await saveAnnouncement(text);
+  if(ok){
+    renderAnnouncementBody(text || 'No announcement posted yet.');
+    document.getElementById('ann-modal-meta').textContent = text ? annMetaLine({ posted_by: studentInfo.name || 'Admin', updated_at: new Date().toISOString() }) : '';
+    setAnnEditMode(false);
+  }
+});
+
+document.getElementById('topics-admin-btn').addEventListener('click', ()=>{
+  if(requestAdminUnlock()){
+    document.getElementById('topics-admin-btn').style.display = 'none';
+    document.getElementById('checklist-sync-note').textContent = 'Admin mode — edits sync to everyone.';
+    renderChecklist();
+  }
+});
+
+const THIRD_YEAR_TOPICS = {
+  "BSA314 - Business Combinations": [
+    "Overview: what is a business combination? (not sure)",
+    "Acquisition method - fair value of consideration transferred (not sure)",
+    "Identifiable assets acquired & liabilities assumed (not sure)",
+    "Goodwill / gain on bargain purchase computation (not sure)",
+    "Non-controlling interest (NCI) - initial measurement (not sure)",
+    "Consolidated financial statements - basic worksheet (not sure)"
+  ],
+  "BSA313 - Auditing and Assurance": [
+    "Overview of the audit process (not sure)",
+    "Assurance vs. attestation (PSA 200 framework) (not sure)",
+    "Audit evidence & audit procedures (not sure)",
+    "Internal control components (COSO framework) (not sure)",
+    "Audit risk model (inherent, control, detection risk) (not sure)",
+    "Audit reports - unmodified vs modified opinions (not sure)"
+  ],
+  "ACC3110 - Intermediate Accounting 3": [
+    "Course scope / review of liabilities (not sure)",
+    "Bonds payable - issuance at discount/premium (not sure)",
+    "Effective interest method of amortization (not sure)",
+    "Leases - lessee accounting basics (not sure)",
+    "Income tax accounting - deferred tax basics (not sure)",
+    "Shareholders' equity - share capital transactions (not sure)"
+  ],
+  "ACC3111 - Strategic Cost Management": [
+    "Cost concepts refresher (cost behavior) (not sure)",
+    "Cost-volume-profit (CVP) analysis (not sure)",
+    "Introduction to strategic cost management framework (not sure)",
+    "Activity-based costing (ABC) (not sure)",
+    "Balanced scorecard & strategic performance measures (not sure)",
+    "Target costing & value chain analysis (not sure)"
+  ],
+  "FM222 - Financial Management": [
+    "Goals of financial management (not sure)",
+    "Time value of money - present value / future value (not sure)",
+    "Annuities & perpetuities (not sure)",
+    "Capital budgeting techniques (NPV, IRR, Payback) (not sure)",
+    "Cost of capital (WACC) (not sure)",
+    "Working capital management basics (not sure)"
+  ],
+  "ECON13 - Economic Development": [
+    "Economic development vs. economic growth (not sure)",
+    "Key indicators (GDP, GNI, HDI) (not sure)",
+    "Theories of economic development (not sure)",
+    "Poverty, inequality & income distribution (not sure)",
+    "Role of institutions & policy in development (not sure)"
+  ],
+  "LAW13 - Regulatory Framework": [
+    "SALES - CHAPTER 1 -- NATURE AND FORM OF THE CONTRACT",
+    "SALES - CHAPTER 2 -- CAPACITY TO BUY OR SELL",
+    "SALES - CHAPTER 3 -- EFFECTS OF CONTRACT WHEN THE THING SOLD HAS BEEN LOST",
+    "SALES - CHAPTER 4 -- OBLIGATIONS OF THE VENDOR",
+    "SALES - CHAPTER 5 -- OBLIGATIONS OF THE VENDEE",
+    "SALES - CHAPTER 6 -- ACTIONS FOR BREACH OF CONTRACT OF SALE OF GOODS",
+    "SALES - CHAPTER 7 -- EXTINGUISHMENT OF SALES",
+    "SALES - CHAPTER 8 -- ASSIGNMENT OF CREDITS AND OTHER INCORPOREAL RIGHTS",
+    "SALES - CHAPTER 9 -- GENERAL PROVISIONS",
+    "SALES - CHAPTER 10 -- BARTER OR EXCHANGE",
+    "SALES - CHAPTER 11 -- BULK SALES LAW",
+    "AGENCY - CHAPTER 1 -- NATURE, FORM, AND KINDS OF AGENCY",
+    "AGENCY - CHAPTER 2 -- OBLIGATIONS OF THE AGENT",
+    "AGENCY - CHAPTER 3 -- OBLIGATIONS OF THE PRINCIPAL",
+    "AGENCY - CHAPTER 4 -- MODES OF EXTINGUISHMENT OF AGENCY",
+    "CREDIT TRANSACTIONS - INTRODUCTION",
+    "CREDIT TRANSACTIONS - A. LOAN",
+    "CREDIT TRANSACTIONS - CHAPTER 1 -- COMMODATUM",
+    "CREDIT TRANSACTIONS - CHAPTER 2 -- SIMPLE LOAN OR MUTUUM",
+    "CREDIT TRANSACTIONS - B. DEPOSIT - CHAPTER 1 -- DEPOSITS IN GENERAL AND ITS DIFFERENT KINDS",
+    "CREDIT TRANSACTIONS - CHAPTER 2 -- VOLUNTARY DEPOSIT",
+    "CREDIT TRANSACTIONS - CHAPTER 3 -- NECESSARY DEPOSIT",
+    "CREDIT TRANSACTIONS - CHAPTER 4 -- SEQUESTRATIONS OR JUDICIAL DEPOSIT",
+    "CREDIT TRANSACTIONS - C. GUARANTY - CHAPTER 1 -- NATURE AND EXTENT OF GUARANTY",
+    "CREDIT TRANSACTIONS - CHAPTER 2 -- EFFECTS OF GUARANTY",
+    "CREDIT TRANSACTIONS - CHAPTER 3 -- EXTINGUISHMENT OF GUARANTY",
+    "CREDIT TRANSACTIONS - D. PLEDGE- CHAPTER 1 -- PROVISIONS COMMON TO PLEDGE AND MORTGAGE",
+    "CREDIT TRANSACTIONS - CHAPTER 2 -- PROVISIONS APPLICABLE ONLY TO PLEDGE",
+    "CREDIT TRANSACTIONS - E. REAL MORTGAGE",
+    "CREDIT TRANSACTIONS - F. ANTICHRESIS",
+    "CREDIT TRANSACTIONS - G. CHATTEL MORTGAGE"
+  ],
+  "STAT - Statistical Analysis w/ Software": [
+    "Descriptive statistics basics (mean, median, mode, SD) (not sure)",
+    "Software tool orientation (SPSS/Excel/R) (not sure)",
+    "Probability distributions basics (not sure)",
+    "Hypothesis testing fundamentals (not sure)",
+    "Correlation & regression basics (not sure)"
+  ],
+  "STRATA - Strategic Management": [
+    "Strategic management process overview (not sure)",
+    "Vision, mission & objectives (not sure)",
+    "Environmental scanning (SWOT, PESTEL) (not sure)",
+    "Strategy formulation - corporate & business level (not sure)",
+    "Strategy implementation & evaluation (not sure)"
+  ],
+  "ENTREP - Entrepreneurial Management": [
+    "Entrepreneurial mindset (not sure)",
+    "Business plan basics (not sure)",
+    "Opportunity recognition & feasibility analysis (not sure)",
+    "Business models & value proposition (not sure)",
+    "Startup financing basics (not sure)"
+  ]
+};
+
+const FIRST_YEAR_TOPICS = {
+  "GE PCOM - Purposive Communication": [
+    "Communication models & the communication process (not sure)",
+    "Communication and globalization (local & global Englishes) (not sure)",
+    "Varieties and registers of spoken and written language (not sure)",
+    "Academic vs. workplace communication (not sure)",
+    "Public speaking basics - purpose, audience, organization (not sure)",
+    "Writing for academic and professional purposes (not sure)"
+  ],
+  "GE STS - Science, Technology and Society": [
+    "Intro: science, technology, and society as a field (not sure)",
+    "History of science and technology (Philippine & global) (not sure)",
+    "Science and technology policy in the Philippines (not sure)",
+    "Biodiversity and the environment (GMOs, sustainability) (not sure)",
+    "The information age - social media, human networking (not sure)",
+    "Ethics of technology - human enhancement, AI, gene editing (not sure)"
+  ],
+  "GE SELF - Understanding the Self": [
+    "The self from philosophical & psychological perspectives (not sure)",
+    "The self from sociological & anthropological perspectives (not sure)",
+    "The physical self and the sexual self (not sure)",
+    "The material and economic self (not sure)",
+    "The spiritual self (not sure)",
+    "The political self and digital self (not sure)"
+  ],
+  "GE MATH - Mathematics in the Modern World": [
+    "Nature of mathematics - patterns & the Fibonacci sequence (not sure)",
+    "Mathematical language and symbols (not sure)",
+    "Problem solving and reasoning (inductive/deductive) (not sure)",
+    "Data management - basic statistics (not sure)",
+    "Geometric designs and mathematics of finance basics (not sure)",
+    "Mathematics of graphs and codes (intro) (not sure)"
+  ],
+  "BA 11 - Functional Areas of Business Operation": [
+    "Overview of business & forms of business organization (not sure)",
+    "Marketing management function (not sure)",
+    "Human resource management function (not sure)",
+    "Operations / production management function (not sure)",
+    "Financial management function (not sure)",
+    "Integrating the functional areas (not sure)"
+  ],
+  "IT 11 - IT Application Tools in Business": [
+    "Intro to information systems in business (not sure)",
+    "Word processing for business documents (not sure)",
+    "Spreadsheets - formulas, functions, basic data analysis (not sure)",
+    "Presentation software for business reports (not sure)",
+    "Basic database concepts (not sure)",
+    "Internet & cloud tools for collaboration (not sure)"
+  ],
+  "NSTP 111 - National Service Training Program 1": [
+    "Orientation - NSTP components (CWTS/LTS/ROTC) & objectives (not sure)",
+    "Self and social awareness / values formation (not sure)",
+    "Community needs assessment basics (not sure)",
+    "Project planning for community service (not sure)",
+    "Disaster awareness and preparedness (not sure)",
+    "Citizenship and civic welfare training concepts (not sure)"
+  ],
+  "ACC 111N - Financial Accounting & Reporting (Fundamentals)": [
+    "Introduction to accounting & the accounting equation (not sure)",
+    "Types of business & forms of business organization (not sure)",
+    "The accounting cycle - journalizing & posting (not sure)",
+    "Trial balance and adjusting entries (not sure)",
+    "Financial statements - basic preparation (not sure)",
+    "Closing entries and the post-closing trial balance (not sure)"
+  ],
+  "PATHFIT 1N - Physical Activities Toward Health and Fitness 1 (Movement Competency Training)": [
+    "Orientation - PATHFIT goals & fitness assessment (not sure)",
+    "Physical fitness components (health-related vs skill-related) (not sure)",
+    "Movement competency training basics (not sure)",
+    "Exercise programming fundamentals (FITT principle) (not sure)",
+    "Nutrition basics for an active lifestyle (not sure)",
+    "Safety, injury prevention & self-monitoring (not sure)"
+  ]
+};
+
+// Merged pool used only as a fallback source when a subject exists in topicsList
+// but hasn't been filled in yet (e.g. a subject just added by an admin).
+const STARTER_TOPICS = { ...THIRD_YEAR_TOPICS, ...FIRST_YEAR_TOPICS };
+
+const TOPICS_BY_YEAR = { '3rd': THIRD_YEAR_TOPICS, '1st': FIRST_YEAR_TOPICS };
+
+// The set of subjects currently in view — reassigned by applyYearLevel() whenever
+// the student's Year Level changes. Everything downstream (checklist, dashboard,
+// badges, quiz list, log dropdown) reads this instead of a fixed subject list.
+let SUBJECT_NAMES = Object.keys(THIRD_YEAR_TOPICS);
+
+let topicsList = {};   // { subject: [topic, topic, ...] } — user-editable
+let topicState = {};   // { "subject||topic": {status, priority, notes} }
+let logEntries = [];   // [{id,date,subject,topic,hours,confidence,notes}]
+let studentInfo = {};
+let barChart, pieChart, calLineChart;
+
+function topicKey(subj, topic){ return subj + '||' + topic; }
+
+// ---------- Year Level (1st Year / 3rd Year) ----------
+// Everything cloud-side (leaderboard, board, announcements) and the local topic
+// set are scoped by this. Defaults to '3rd' so existing 3rd Year users see no
+// change unless they open the Announcement popup and switch it.
+const YEAR_LEVEL_KEY = 'uv-bsa-year-level';
+let yearLevel = null;
+
+function currentYearLevel(){ return (yearLevel === '1st') ? '1st' : '3rd'; }
+
+function loadYearLevel(){
+  let saved = null;
+  try{ saved = localStorage.getItem(YEAR_LEVEL_KEY); }catch(e){ saved = null; }
+  yearLevel = (saved === '1st' || saved === '3rd') ? saved : ((studentInfo && studentInfo.yearLevel) || null);
+}
+
+// Recomputes SUBJECT_NAMES for the active year and back-fills topicsList so
+// every subject in that year has a starting topic array.
+function applyYearLevel(){
+  SUBJECT_NAMES = Object.keys(TOPICS_BY_YEAR[currentYearLevel()]);
+  SUBJECT_NAMES.forEach(s=>{ if(!Array.isArray(topicsList[s])) topicsList[s] = [...(STARTER_TOPICS[s]||[])]; });
+  const badge = document.getElementById('year-level-badge');
+  if(badge) badge.textContent = currentYearLevel()==='1st' ? '🎓 1st Year' : '🎓 3rd Year';
+}
+
+// Applies a Supabase filter for a column that scopes rows by year level, treating
+// missing/legacy rows (posted before this column existed) as 3rd Year.
+function applyYearFilter(query, col){
+  col = col || 'year_level';
+  if(currentYearLevel() === '1st') return query.eq(col, '1st');
+  return query.or(`${col}.eq.3rd,${col}.is.null`);
+}
+
+async function setYearLevel(newYear){
+  if(newYear !== '1st' && newYear !== '3rd') return;
+  const changed = newYear !== currentYearLevel();
+  yearLevel = newYear;
+  try{ localStorage.setItem(YEAR_LEVEL_KEY, yearLevel); }catch(e){}
+  studentInfo.yearLevel = yearLevel;
+  await saveStudentInfo();
+  applyYearLevel();
+  renderLogSubjectOptions();
+  renderChecklist();
+  renderAll(true);
+  refreshBadgesWithQuizData();
+  if(changed){
+    const lbPanel = document.getElementById('panel-leaderboard');
+    if(lbPanel && lbPanel.classList.contains('active')) fetchLeaderboard();
+    const boardPanel = document.getElementById('panel-board');
+    if(boardPanel && boardPanel.classList.contains('active')) renderBoard();
+    if(document.getElementById('ann-modal-overlay').style.display !== 'none'){
+      await loadAnnouncementIntoModal();
+    }
+  }
+}
+
+// ---------- Cross-device login (Name + ID) with non-destructive merge ----------
+// Progress is keyed by ID Number in Supabase. Logging in on a new device merges
+// (unions) cloud + local data instead of overwriting either side, so nothing is lost.
+function statusRank(status){ return status === 'Done' ? 2 : status === 'In Progress' ? 1 : 0; }
+
+function mergeTopicState(local, cloud){
+  const merged = { ...(cloud || {}) };
+  Object.entries(local || {}).forEach(([key, localEntry])=>{
+    const cloudEntry = merged[key];
+    if(!cloudEntry){ merged[key] = localEntry; return; }
+    const keepLocalStatus = statusRank(localEntry.status) >= statusRank(cloudEntry.status);
+    merged[key] = {
+      status: keepLocalStatus ? localEntry.status : cloudEntry.status,
+      priority: localEntry.priority || cloudEntry.priority || 'Medium',
+      notes: (localEntry.notes && localEntry.notes.trim()) ? localEntry.notes : (cloudEntry.notes || '')
+    };
+  });
+  return merged;
+}
+
+function mergeLogEntries(local, cloud){
+  const byId = new Map();
+  (cloud || []).forEach(e => byId.set(e.id, e));
+  (local || []).forEach(e => byId.set(e.id, e)); // local wins on exact-id collision (shouldn't happen, ids are unique)
+  return [...byId.values()].sort((a,b)=> (a.date||'').localeCompare(b.date||''));
+}
+
+async function fetchCloudProgress(studentId){
+  if(!ANN_CONFIGURED || !studentId) return null;
+  try{
+    const { data, error } = await sb.from('student_progress').select('*').eq('student_id', studentId).maybeSingle();
+    if(error) throw error;
+    return data;
+  }catch(e){ console.error('Progress fetch failed:', e); return null; }
+}
+
+async function pushCloudProgress(){
+  const sid = (studentInfo && studentInfo.id) ? studentInfo.id.trim() : '';
+  if(!ANN_CONFIGURED || !sid) return;
+  try{
+    const { error } = await sb.from('student_progress').upsert({
+      student_id: sid,
+      student_name: (studentInfo.name || '').trim(),
+      topic_state: topicState,
+      log_entries: logEntries,
+      updated_at: new Date().toISOString()
+    }, { onConflict: 'student_id' });
+    if(error) throw error;
+  }catch(e){ console.error('Progress push failed:', e); }
+}
+
+let pushProgressTimer = null;
+function pushCloudProgressDebounced(){
+  clearTimeout(pushProgressTimer);
+  pushProgressTimer = setTimeout(pushCloudProgress, 1500);
+}
+
+async function loginAndSync(){
+  const sid = (studentInfo && studentInfo.id) ? studentInfo.id.trim() : '';
+  if(!ANN_CONFIGURED || !sid) return; // no ID yet = local-only mode, same as before
+  const statusEl = document.getElementById('login-status');
+  if(statusEl) statusEl.textContent = '☁ Syncing…';
+  const cloud = await fetchCloudProgress(sid);
+  topicState = mergeTopicState(topicState, cloud ? cloud.topic_state : null);
+  logEntries = mergeLogEntries(logEntries, cloud ? cloud.log_entries : null);
+  await saveTopicState();
+  await saveLogEntries();
+  await pushCloudProgress(); // write the merged superset back, so no device is ever behind
+  renderChecklist();
+  renderAll(true);
+  if(statusEl) statusEl.textContent = cloud ? '☁ Synced — progress merged from your other device(s)' : '☁ Synced — this ID is now linked to your progress';
+}
+
+async function loadAll(){
+  try{
+    const v = localStorage.getItem('uv-bsa-student-info');
+    studentInfo = v ? JSON.parse(v) : {};
+  }catch(e){ studentInfo = {}; }
+
+  loadYearLevel();
+  applyYearLevel(); // sets SUBJECT_NAMES for the saved (or default) year level
+
+  try{
+    const v = localStorage.getItem('uv-bsa-topics-list');
+    topicsList = v ? JSON.parse(v) : JSON.parse(JSON.stringify(STARTER_TOPICS));
+  }catch(e){ topicsList = JSON.parse(JSON.stringify(STARTER_TOPICS)); }
+  applyYearLevel();
+
+  // Pull the shared/synced topic list so everyone sees the same topics.
+  // Falls back to the local cache above if offline or not yet configured.
+  try{
+    const shared = await fetchSharedTopics();
+    if(shared && shared.topics && typeof shared.topics === 'object'){
+      topicsList = shared.topics;
+      applyYearLevel();
+      localStorage.setItem('uv-bsa-topics-list', JSON.stringify(topicsList));
+    }
+  }catch(e){ console.error('Shared topics sync skipped:', e); }
+
+  try{
+    const v = localStorage.getItem('uv-bsa-topic-state');
+    topicState = v ? JSON.parse(v) : {};
+  }catch(e){ topicState = {}; }
+
+  try{
+    const v = localStorage.getItem('uv-bsa-log-entries');
+    logEntries = v ? JSON.parse(v) : [];
+  }catch(e){ logEntries = []; }
+
+  document.getElementById('f-name').value = studentInfo.name || '';
+  document.getElementById('f-id').value = studentInfo.id || '';
+  document.getElementById('f-section').value = studentInfo.section || 'BSA 3-A2';
+  document.getElementById('f-year').value = studentInfo.year || 'SY 2026-2027, 1st Sem';
+  document.getElementById('lb-optin-check').checked = !!studentInfo.shareOnLeaderboard;
+}
+
+async function saveTopicsList(){
+  try{ localStorage.setItem('uv-bsa-topics-list', JSON.stringify(topicsList)); }catch(e){ console.error(e); }
+  await pushSharedTopics(); // sync the edit to everyone
+}
+async function saveTopicState(){
+  try{ localStorage.setItem('uv-bsa-topic-state', JSON.stringify(topicState)); }catch(e){ console.error(e); }
+  pushCloudProgressDebounced();
+}
+async function saveLogEntries(){
+  try{ localStorage.setItem('uv-bsa-log-entries', JSON.stringify(logEntries)); }catch(e){ console.error(e); }
+  pushCloudProgressDebounced();
+}
+async function saveStudentInfo(){
+  try{ localStorage.setItem('uv-bsa-student-info', JSON.stringify(studentInfo)); }catch(e){ console.error(e); }
+}
+
+function getState(subj, topic){
+  const k = topicKey(subj, topic);
+  if(!topicState[k]) topicState[k] = { status:'Not Started', priority:'Medium', notes:'' };
+  return topicState[k];
+}
+
+function computeSubjectStats(subj){
+  const topics = topicsList[subj] || [];
+  let completed=0, inprog=0;
+  topics.forEach(t=>{
+    const s = getState(subj,t).status;
+    if(s==='Completed') completed++;
+    else if(s==='In Progress') inprog++;
+  });
+  const total = topics.length;
+  const hours = logEntries.filter(e=>e.subject===subj).reduce((a,b)=>a+(parseFloat(b.hours)||0),0);
+  return { total, completed, inprog, notstarted: total-completed-inprog, pct: total? completed/total:0, hours };
+}
+
+function computeOverall(){
+  let total=0, completed=0, inprog=0, hours=0;
+  SUBJECT_NAMES.forEach(s=>{
+    const st = computeSubjectStats(s);
+    total+=st.total; completed+=st.completed; inprog+=st.inprog; hours+=st.hours;
+  });
+  return { total, completed, inprog, notstarted: total-completed-inprog, pct: total? completed/total:0, hours };
+}
+
+function computeStudyStreak(){
+  // Distinct calendar dates (YYYY-MM-DD) the student logged at least one study entry.
+  const dateSet = new Set(logEntries.map(e=>e.date).filter(Boolean));
+  if(dateSet.size === 0) return 0;
+
+  const toLocalDateStr = (d) => {
+    // Matches the format produced by <input type="date">: YYYY-MM-DD, local time.
+    const y = d.getFullYear(), m = String(d.getMonth()+1).padStart(2,'0'), day = String(d.getDate()).padStart(2,'0');
+    return `${y}-${m}-${day}`;
+  };
+
+  let streak = 0;
+  let cursor = new Date(); // start checking from today
+  // If nothing logged today, the streak can still count from yesterday backwards
+  // (so it doesn't zero out at midnight before the student has a chance to log today).
+  if(!dateSet.has(toLocalDateStr(cursor))){
+    cursor.setDate(cursor.getDate() - 1);
+  }
+  while(dateSet.has(toLocalDateStr(cursor))){
+    streak++;
+    cursor.setDate(cursor.getDate() - 1);
+  }
+  return streak;
+}
+
+function renderKPIs(){
+  const o = computeOverall();
+  document.getElementById('kpi-total').textContent = o.total;
+  document.getElementById('kpi-completed').textContent = o.completed;
+  document.getElementById('kpi-progress').textContent = o.inprog;
+  document.getElementById('kpi-pct').textContent = Math.round(o.pct*100) + '%';
+  document.getElementById('kpi-hours').textContent = o.hours.toFixed(1);
+  const streakVal = computeStudyStreak();
+  document.getElementById('kpi-streak').textContent = streakVal;
+  document.getElementById('kpi-streak-card').classList.toggle('streak-live', streakVal > 0);
+  syncLeaderboard();
+}
+
+function renderMonthCalendar(){
+  const now = new Date();
+  const year = now.getFullYear(), month = now.getMonth(); // 0-based
+  const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  document.getElementById('cal-month-label').textContent = `${monthNames[month]} ${year}`;
+
+  // hours per day (YYYY-MM-DD) for the current month only
+  const hoursByDay = {};
+  logEntries.forEach(e=>{
+    if(!e.date) return;
+    const d = new Date(e.date + 'T00:00:00');
+    if(d.getFullYear()===year && d.getMonth()===month){
+      hoursByDay[e.date] = (hoursByDay[e.date]||0) + (parseFloat(e.hours)||0);
+    }
+  });
+
+  const daysStudied = Object.keys(hoursByDay).length;
+  const monthHours = Object.values(hoursByDay).reduce((a,b)=>a+b,0);
+  const avgHours = daysStudied ? monthHours/daysStudied : 0;
+  let bestDay = null, bestHours = 0;
+  Object.entries(hoursByDay).forEach(([d,h])=>{ if(h>bestHours){ bestHours=h; bestDay=d; } });
+
+  document.getElementById('cal-days-studied').textContent = daysStudied;
+  document.getElementById('cal-month-hours').textContent = monthHours.toFixed(1);
+  document.getElementById('cal-avg-hours').textContent = avgHours.toFixed(1);
+  document.getElementById('cal-best-day').textContent = bestDay ? new Date(bestDay+'T00:00:00').getDate() : '—';
+
+  // build grid
+  const grid = document.getElementById('cal-grid');
+  grid.innerHTML = '';
+  ['S','M','T','W','T','F','S'].forEach(d=>{
+    const el = document.createElement('div');
+    el.className = 'cal-dow';
+    el.textContent = d;
+    grid.appendChild(el);
+  });
+
+  const firstDow = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month+1, 0).getDate();
+  const todayStr = `${year}-${String(month+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+
+  for(let i=0;i<firstDow;i++){
+    const el = document.createElement('div');
+    el.className = 'cal-day empty';
+    grid.appendChild(el);
+  }
+  for(let day=1; day<=daysInMonth; day++){
+    const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+    const h = hoursByDay[dateStr] || 0;
+    let lvl = 0;
+    if(h > 0 && h < 1) lvl = 1;
+    else if(h >= 1 && h < 3) lvl = 2;
+    else if(h >= 3) lvl = 3;
+    const el = document.createElement('div');
+    el.className = 'cal-day' + (lvl?` lvl-${lvl}`:'') + (dateStr===todayStr?' today':'');
+    el.style.animationDelay = `${Math.min(day * 8, 220)}ms`;
+    el.textContent = day;
+    el.title = h ? `${h.toFixed(1)}h logged` : 'No study logged';
+    grid.appendChild(el);
+  }
+
+  renderCalLineChart(hoursByDay, year, month, daysInMonth);
+
+  return { daysStudied, monthHours, avgHours };
+}
+
+function renderCalLineChart(hoursByDay, year, month, daysInMonth){
+  const lineCanvas = document.getElementById('calLineChart');
+  if(!lineCanvas) return;
+  const labels = [];
+  const data = [];
+  for(let day=1; day<=daysInMonth; day++){
+    const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+    labels.push(day);
+    data.push(+(hoursByDay[dateStr] || 0).toFixed(2));
+  }
+  const ctx = lineCanvas.getContext('2d');
+  if(calLineChart) calLineChart.destroy();
+  calLineChart = new Chart(ctx, {
+    type:'line',
+    data:{
+      labels,
+      datasets:[{
+        data,
+        borderColor:'#7A0F1D',
+        backgroundColor:'rgba(122,15,29,0.1)',
+        borderWidth:2,
+        pointRadius:0,
+        pointHoverRadius:3,
+        fill:true,
+        tension:0.3
+      }]
+    },
+    options:{
+      maintainAspectRatio:false,
+      plugins:{
+        legend:{ display:false },
+        tooltip:{ callbacks:{ label:c=>`${c.parsed.y}h` } }
+      },
+      scales:{
+        x:{ grid:{display:false}, ticks:{ font:{size:9}, maxTicksLimit:8 } },
+        y:{ beginAtZero:true, grid:{color:'#E4DCC8'}, ticks:{ font:{size:9} } }
+      }
+    }
+  });
+}
+
+function renderLedger(){
+  const body = document.getElementById('ledger-body');
+  body.innerHTML = '';
+  SUBJECT_NAMES.forEach(subj=>{
+    const st = computeSubjectStats(subj);
+    const row = document.createElement('div');
+    row.className = 'ledger-row';
+    row.innerHTML = `
+      <span class="subj-name">${subj}</span>
+      <span class="num">${st.total}</span>
+      <span class="num">${st.completed}</span>
+      <span class="num">${st.hours.toFixed(1)}</span>
+      <span class="bar-cell">
+        <span class="bar-track"><span class="bar-fill" style="width:${Math.round(st.pct*100)}%"></span></span>
+      </span>
+      <span class="pct-txt">${Math.round(st.pct*100)}%</span>
+    `;
+    body.appendChild(row);
+  });
+}
+
+function renderCharts(){
+  const labels = SUBJECT_NAMES.map(s=>s.split(' - ')[0]);
+  const pcts = SUBJECT_NAMES.map(s=>Math.round(computeSubjectStats(s).pct*100));
+  const o = computeOverall();
+
+  const barCtx = document.getElementById('barChart').getContext('2d');
+  if(barChart) barChart.destroy();
+  barChart = new Chart(barCtx, {
+    type:'bar',
+    data:{ labels, datasets:[{ data:pcts, backgroundColor:'#7A0F1D', borderRadius:4, maxBarThickness:22 }] },
+    options:{
+      indexAxis:'y',
+      plugins:{ legend:{display:false}, tooltip:{callbacks:{label:c=>c.parsed.x+'%'}} },
+      scales:{ x:{ min:0, max:100, ticks:{ callback:v=>v+'%' }, grid:{color:'#E4DCC8'} }, y:{ grid:{display:false} } }
+    }
+  });
+
+  const pieCtx = document.getElementById('pieChart').getContext('2d');
+  if(pieChart) pieChart.destroy();
+  pieChart = new Chart(pieCtx, {
+    type:'doughnut',
+    data:{
+      labels:['Completed','In Progress','Not Started'],
+      datasets:[{ data:[o.completed, o.inprog, o.notstarted], backgroundColor:['#2F6B3E','#B4711E','#A23B2E'], borderWidth:2, borderColor:'#fff' }]
+    },
+    options:{ plugins:{ legend:{ position:'bottom', labels:{ font:{family:'Inter'}, boxWidth:10, padding:14 } } }, cutout:'62%' }
+  });
+}
+
+function renderChecklist(){
+  const body = document.getElementById('checklist-body');
+
+  // preserve which subject groups are currently expanded across re-renders
+  const openSet = new Set();
+  document.querySelectorAll('.subject-group').forEach((el, idx)=>{
+    if(el.open) openSet.add(SUBJECT_NAMES[idx]);
+  });
+  const noneOpenYet = openSet.size === 0;
+
+  body.innerHTML = '';
+  SUBJECT_NAMES.forEach((subj, idx)=>{
+    const st = computeSubjectStats(subj);
+    const details = document.createElement('details');
+    details.className = 'subject-group';
+    details.open = openSet.has(subj) || (noneOpenYet && idx===0);
+    const summary = document.createElement('summary');
+    summary.innerHTML = `<span><span class="chev">▶</span> &nbsp;${esc(subj)}</span><span class="mini-pct">${st.completed}/${st.total} · ${Math.round(st.pct*100)}%</span>`;
+    details.appendChild(summary);
+
+    (topicsList[subj] || []).forEach(topic=>{
+      const s = getState(subj, topic);
+      const row = document.createElement('div');
+      row.className = 'topic-row';
+      const statusClass = s.status==='Completed' ? 'st-completed' : s.status==='In Progress' ? 'st-inprogress' : 'st-notstarted';
+      row.innerHTML = `
+        <span class="topic-title">${esc(topic)}</span>
+        <select class="status-select ${statusClass}">
+          <option ${s.status==='Not Started'?'selected':''}>Not Started</option>
+          <option ${s.status==='In Progress'?'selected':''}>In Progress</option>
+          <option ${s.status==='Completed'?'selected':''}>Completed</option>
+        </select>
+        <select class="priority-select">
+          <option ${s.priority==='High'?'selected':''}>High</option>
+          <option ${s.priority==='Medium'?'selected':''}>Medium</option>
+          <option ${s.priority==='Low'?'selected':''}>Low</option>
+        </select>
+        <input class="notes-input" type="text" placeholder="Notes..." value="${esc(s.notes)}" />
+        <button class="topic-del-btn" title="Remove this topic">✕</button>
+      `;
+      const statusSel = row.querySelector('.status-select');
+      statusSel.addEventListener('change', async ()=>{
+        s.status = statusSel.value;
+        statusSel.className = 'status-select ' + (s.status==='Completed'?'st-completed':s.status==='In Progress'?'st-inprogress':'st-notstarted');
+        await saveTopicState();
+        renderAll(true);
+      });
+      const prioSel = row.querySelector('.priority-select');
+      prioSel.addEventListener('change', async ()=>{ s.priority = prioSel.value; await saveTopicState(); });
+      const notesInput = row.querySelector('.notes-input');
+      notesInput.addEventListener('change', async ()=>{ s.notes = notesInput.value; await saveTopicState(); });
+      const delBtn = row.querySelector('.topic-del-btn');
+      delBtn.addEventListener('click', async ()=>{
+        if(!requestAdminUnlock()) return;
+        if(!confirm(`Remove "${topic}" from ${subj} for everyone?`)) return;
+        topicsList[subj] = (topicsList[subj]||[]).filter(t=>t!==topic);
+        delete topicState[topicKey(subj, topic)];
+        await saveTopicsList();
+        await saveTopicState();
+        renderChecklist();
+        renderAll(true);
+      });
+      if(!isAdmin()) delBtn.style.display = 'none';
+
+      details.appendChild(row);
+    });
+
+    // add-topic row — admin-only: edits here sync to everyone via Supabase
+    const addRow = document.createElement('div');
+    addRow.className = 'add-topic-row';
+    if(isAdmin()){
+      addRow.innerHTML = `
+        <input type="text" class="add-topic-input" placeholder="+ Add a topic for this subject..." />
+        <button class="add-topic-btn">Add Topic (syncs to everyone)</button>
+      `;
+      const addInput = addRow.querySelector('.add-topic-input');
+      const addBtn = addRow.querySelector('.add-topic-btn');
+      const doAdd = async ()=>{
+        const val = addInput.value.trim();
+        if(!val) return;
+        if(!topicsList[subj]) topicsList[subj] = [];
+        if(topicsList[subj].includes(val)){ alert('This topic is already in the list.'); return; }
+        topicsList[subj].push(val);
+        await saveTopicsList();
+        renderChecklist();
+        renderAll(true);
+      };
+      addBtn.addEventListener('click', doAdd);
+      addInput.addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); doAdd(); } });
+    } else {
+      addRow.innerHTML = `<p class="checklist-sync-note" style="margin:6px 0 0;">Only the admin can add or remove topics — this list is shared by everyone.</p>`;
+    }
+    details.appendChild(addRow);
+
+    body.appendChild(details);
+  });
+}
+
+function renderLogSubjectOptions(){
+  const sel = document.getElementById('log-subject');
+  sel.innerHTML = SUBJECT_NAMES.map(s=>`<option value="${s}">${s}</option>`).join('');
+}
+
+function confDots(n){
+  n = parseInt(n)||0;
+  let html = '<span class="conf-dot">';
+  for(let i=1;i<=5;i++) html += `<span class="${i<=n?'on':''}"></span>`;
+  html += '</span>';
+  return html;
+}
+
+let lbSyncTimer = null;
+function syncLeaderboard(){
+  if(!LB_CONFIGURED || !studentInfo.shareOnLeaderboard) return;
+  clearTimeout(lbSyncTimer);
+  lbSyncTimer = setTimeout(async ()=>{
+    const name = (document.getElementById('f-name').value || '').trim();
+    const sid = (document.getElementById('f-id').value || '').trim();
+    if(!name && !sid) return; // need at least a name or ID to appear on the leaderboard
+    const section = (document.getElementById('f-section').value || '').trim();
+    const o = computeOverall();
+    const badgesEarned = computeBadges().filter(b=>b.earned).length;
+    try{
+      await sb.from('leaderboard').upsert({
+        student_id: sid || name,
+        student_name: name || sid,
+        section: section,
+        year_level: currentYearLevel(),
+        overall_pct: Math.round(o.pct * 1000) / 10,
+        completed_topics: o.completed,
+        total_topics: o.total,
+        hours_logged: Math.round(o.hours * 10) / 10,
+        badges_earned: badgesEarned,
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'student_id' });
+      const lbPanel = document.getElementById('panel-leaderboard');
+      if(lbPanel && lbPanel.classList.contains('active')) fetchLeaderboard();
+    }catch(e){ console.error('Leaderboard sync failed:', e); }
+  }, 600); // debounce rapid changes
+}
+
+async function fetchLeaderboard(){
+  const body = document.getElementById('lb-body');
+  if(!LB_CONFIGURED){
+    body.innerHTML = '<p class="lb-msg">Leaderboard isn\'t connected yet — add your Supabase URL and key in the code.</p>';
+    return;
+  }
+  body.innerHTML = '<p class="lb-msg">Loading…</p>';
+  try{
+    let query = sb.from('leaderboard').select('*');
+    query = applyYearFilter(query, 'year_level');
+    const { data, error } = await query
+      .order('badges_earned', { ascending:false })
+      .order('overall_pct', { ascending:false })
+      .order('completed_topics', { ascending:false })
+      .order('hours_logged', { ascending:false });
+    if(error) throw error;
+    if(!data || data.length===0){
+      body.innerHTML = '<p class="lb-msg">No one has synced progress yet. Be the first!</p>';
+      return;
+    }
+    let maxBadges = 0;
+    data.forEach(r=>{ const b = parseInt(r.badges_earned)||0; if(b>maxBadges) maxBadges=b; });
+    const badgeChampionIds = maxBadges>0 ? data.filter(r=>(parseInt(r.badges_earned)||0)===maxBadges).map(r=>r.student_id) : [];
+
+    body.innerHTML = data.map((row, idx)=>{
+      const rank = idx+1;
+      const topClass = rank===1?'top1':rank===2?'top2':rank===3?'top3':'';
+      const medal = rank===1?'🥇':rank===2?'🥈':rank===3?'🥉':rank;
+      const pct = Math.max(0, Math.min(100, parseFloat(row.overall_pct) || 0));
+      const badgesEarned = parseInt(row.badges_earned) || 0;
+      const hours = parseFloat(row.hours_logged) || 0;
+
+      const titles = [];
+      if(idx===0) titles.push('🥇 Top Scholar');
+      else if(idx===1) titles.push('🥈 Rising Star');
+      else if(idx===2) titles.push('🥉 Steady Climber');
+      if(badgeChampionIds.includes(row.student_id)) titles.push('🏅 Badge Champion');
+      const titleHtml = titles.length ? `<span class="lb-title">${esc(titles.join(' · '))}</span>` : '';
+
+      return `<div class="lb-row ${topClass}">
+        <span class="lb-rank">${medal}</span>
+        <span>${esc(row.student_name)}${titleHtml}</span>
+        <span>${esc(row.section||'—')}</span>
+        <span class="lb-bar-cell"><span class="lb-bar-track"><span class="lb-bar-fill" style="width:${pct}%"></span></span><span class="lb-pct">${pct}%</span></span>
+        <span class="lb-badges">🏅 ${badgesEarned}</span>
+        <span class="lb-badges">${hours.toFixed(1)}h</span>
+      </div>`;
+    }).join('');
+  }catch(e){
+    body.innerHTML = '<p class="lb-msg">Could not load leaderboard: ' + esc(e.message||String(e)) + '</p>';
+  }
+}
+
+function computeLongestStreak(){
+  const dates = [...new Set(logEntries.map(e=>e.date).filter(Boolean))].sort();
+  if(dates.length===0) return 0;
+  let longest = 1, current = 1;
+  for(let i=1;i<dates.length;i++){
+    const diffDays = Math.round((new Date(dates[i]) - new Date(dates[i-1])) / 86400000);
+    if(diffDays===1){ current++; longest = Math.max(longest, current); }
+    else if(diffDays>1){ current = 1; }
+  }
+  return longest;
+}
+
+let myQuizAttemptsCache = []; // populated lazily via refreshBadgesWithQuizData(); quiz-based badges use this
+
+async function refreshBadgesWithQuizData(){
+  myQuizAttemptsCache = await fetchMyQuizAttempts();
+  renderBadges();
+  syncLeaderboard(); // quiz badges just became known — push the corrected count to the leaderboard
+}
+
+function computeBadges(){
+  const badges = [];
+  const o = computeOverall();
+  let allSubjectsComplete = SUBJECT_NAMES.length > 0;
+
+  SUBJECT_NAMES.forEach(subj=>{
+    const st = computeSubjectStats(subj);
+    const code = subj.split(' - ')[0];
+    const complete = st.total > 0 && st.completed === st.total;
+    if(!complete) allSubjectsComplete = false;
+
+    badges.push({
+      id:'complete-'+code, icon:'🏆',
+      title:`${code} Mastered`,
+      desc:`Complete every topic in ${subj}.`,
+      earned: complete
+    });
+
+    if(st.total >= 5){
+      badges.push({
+        id:'five-'+code, icon:'⭐',
+        title:`${code}: 5 Topics Down`,
+        desc:`Complete at least 5 topics in ${subj}.`,
+        earned: st.completed >= 5
+      });
+    }
+
+    const subjEntries = logEntries.filter(e=> e.subject===subj && e.confidence);
+    if(subjEntries.length >= 3){
+      const avgConf = subjEntries.reduce((a,b)=>a+(parseFloat(b.confidence)||0),0) / subjEntries.length;
+      badges.push({
+        id:'conf-'+code, icon:'💪',
+        title:`Confident in ${code}`,
+        desc:`Average a confidence rating of 4+ across at least 3 logged sessions in ${subj}.`,
+        earned: avgConf >= 4
+      });
+    }
+  });
+
+  badges.push({ id:'capstone', icon:'👑', title:'Ledger Legend', desc:'Complete every topic in every subject.', earned: allSubjectsComplete });
+
+  [10,25,50].forEach(h=>{
+    badges.push({
+      id:'hours-'+h, icon: h===50?'💎':h===25?'🔥':'⏱️',
+      title:`${h} Hours Logged`,
+      desc:`Log ${h}+ total study hours.`,
+      earned: o.hours >= h
+    });
+  });
+
+  const streak = computeLongestStreak();
+  badges.push({ id:'streak-3', icon:'📅', title:'3-Day Streak', desc:'Log study sessions on 3 consecutive days.', earned: streak >= 3 });
+  badges.push({ id:'streak-7', icon:'🔥', title:'7-Day Streak', desc:'Log study sessions on 7 consecutive days.', earned: streak >= 7 });
+  badges.push({ id:'streak-14', icon:'🌋', title:'14-Day Streak', desc:'Log study sessions on 14 consecutive days.', earned: streak >= 14 });
+
+  // Milestones on overall topic progress
+  badges.push({ id:'first-topic', icon:'🌱', title:'First Step', desc:'Complete your first topic in any subject.', earned: o.completed >= 1 });
+  badges.push({ id:'halfway', icon:'🏁', title:'Halfway There', desc:'Reach 50% overall completion across all subjects.', earned: o.pct >= 0.5 });
+
+  // Well-roundedness: at least one logged session in every subject
+  const subjectsWithLogs = new Set(logEntries.map(e=>e.subject));
+  const wellRounded = SUBJECT_NAMES.length > 0 && SUBJECT_NAMES.every(s=>subjectsWithLogs.has(s));
+  badges.push({ id:'well-rounded', icon:'🧭', title:'Well-Rounded', desc:'Log at least one study session in every subject.', earned: wellRounded });
+
+  // A single long focused session
+  const hasMarathon = logEntries.some(e => (parseFloat(e.hours)||0) >= 3);
+  badges.push({ id:'marathon', icon:'🏃', title:'Marathon Session', desc:'Log a single study session of 3+ hours.', earned: hasMarathon });
+
+  // Quiz-based badges (uses myQuizAttemptsCache — refreshed when the Badges tab is opened)
+  const qa = myQuizAttemptsCache;
+  const hasAnyQuiz = qa.length >= 1;
+  const hasPerfect = qa.some(a => a.total > 0 && a.score === a.total);
+  const hasFiveAttempts = qa.length >= 5;
+  const scoredAttempts = qa.filter(a => a.total > 0);
+  const overallAvgPct = scoredAttempts.length ? scoredAttempts.reduce((sum,a)=>sum + a.score/a.total, 0) / scoredAttempts.length : 0;
+  const highAchiever = scoredAttempts.length >= 3 && overallAvgPct >= 0.8;
+
+  badges.push({ id:'quiz-first', icon:'🧠', title:'Quiz Rookie', desc:'Take your first quiz.', earned: hasAnyQuiz });
+  badges.push({ id:'quiz-perfect', icon:'💯', title:'Perfect Score', desc:'Score 100% on any quiz.', earned: hasPerfect });
+  badges.push({ id:'quiz-five', icon:'📝', title:'Quiz Regular', desc:'Complete 5 quiz attempts.', earned: hasFiveAttempts });
+  badges.push({ id:'quiz-high-achiever', icon:'🎯', title:'High Achiever', desc:'Average 80%+ across at least 3 quiz attempts.', earned: highAchiever });
+
+  return badges;
+}
+
+function renderBadges(){
+  const body = document.getElementById('badges-body');
+  const badges = computeBadges();
+  const earnedCount = badges.filter(b=>b.earned).length;
+  document.getElementById('badges-count').textContent = `${earnedCount} / ${badges.length} earned`;
+  body.innerHTML = badges.map(b=>`
+    <div class="badge-card ${b.earned?'earned':'locked'}">
+      <div class="badge-icon">${b.earned ? b.icon : '🔒'}</div>
+      <div class="badge-title">${esc(b.title)}</div>
+      <div class="badge-desc">${esc(b.desc)}</div>
+    </div>
+  `).join('');
+}
+
+function renderLog(){
+  const body = document.getElementById('log-body');
+  if(logEntries.length===0){
+    body.innerHTML = '<div class="empty-log">No sessions logged yet. Add your first study session above.</div>';
+    return;
+  }
+  const sorted = [...logEntries].sort((a,b)=> (b.date||'').localeCompare(a.date||''));
+  body.innerHTML = '';
+  sorted.forEach(e=>{
+    const row = document.createElement('div');
+    row.className = 'log-row';
+    row.innerHTML = `
+      <span>${e.date||''}</span>
+      <span>${e.subject.split(' - ')[0]}</span>
+      <span>${e.topic||''}</span>
+      <span class="num">${(parseFloat(e.hours)||0).toFixed(1)}</span>
+      <span>${confDots(e.confidence)}</span>
+      <span>${e.notes||''}</span>
+      <button class="del-btn" data-id="${e.id}">✕</button>
+    `;
+    row.querySelector('.del-btn').addEventListener('click', async ()=>{
+      logEntries = logEntries.filter(x=>x.id!==e.id);
+      await saveLogEntries();
+      renderAll(true);
+    });
+    body.appendChild(row);
+  });
+}
+
+function renderAll(skipChecklistScrollReset){
+  renderKPIs();
+  renderMonthCalendar();
+  renderLedger();
+  renderCharts();
+  renderLog();
+  renderBadges();
+  if(!skipChecklistScrollReset) renderChecklist();
+  else {
+    // update mini-pct and status classes without collapsing open/closed state
+    document.querySelectorAll('.subject-group').forEach((el, idx)=>{
+      const subj = SUBJECT_NAMES[idx];
+      const st = computeSubjectStats(subj);
+      const mini = el.querySelector('.mini-pct');
+      if(mini) mini.textContent = `${st.completed}/${st.total} · ${Math.round(st.pct*100)}%`;
+    });
+  }
+}
+
+// Tabs
+document.querySelectorAll('.tab-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('panel-' + btn.dataset.tab).classList.add('active');
+    if(btn.dataset.tab === 'leaderboard') fetchLeaderboard();
+    if(btn.dataset.tab === 'quizzes') renderQuizzesPanel();
+    if(btn.dataset.tab === 'board'){ renderBoard(); startBoardAutoRefresh(); } else { stopBoardAutoRefresh(); }
+    if(btn.dataset.tab === 'badges') refreshBadgesWithQuizData();
+  });
+});
+document.getElementById('lb-refresh').addEventListener('click', fetchLeaderboard);
+
+// Student info save
+function readStudentInfo(){
+  studentInfo = {
+    name: document.getElementById('f-name').value,
+    id: document.getElementById('f-id').value,
+    section: document.getElementById('f-section').value,
+    year: document.getElementById('f-year').value,
+    shareOnLeaderboard: document.getElementById('lb-optin-check').checked,
+    yearLevel: currentYearLevel(),
+  };
+}
+['f-name','f-id','f-section','f-year'].forEach(id=>{
+  document.getElementById(id).addEventListener('change', async ()=>{
+    readStudentInfo();
+    await saveStudentInfo();
+    syncLeaderboard();
+    if(id === 'f-id') await loginAndSync();
+    if(id === 'f-name' || id === 'f-id') updateNotifBtnLabel(); // backfill push_subscriptions name/id if already subscribed
+  });
+});
+document.getElementById('lb-optin-check').addEventListener('change', async (e)=>{
+  const wasSharing = !!studentInfo.shareOnLeaderboard;
+  readStudentInfo();
+  await saveStudentInfo();
+  if(e.target.checked){
+    syncLeaderboard();
+  } else if(wasSharing && LB_CONFIGURED){
+    const sid = (studentInfo.id || studentInfo.name || '').trim();
+    if(sid){
+      try{
+        const { error, count } = await sb.from('leaderboard').delete({ count:'exact' }).eq('student_id', sid);
+        if(error){
+          console.error('Leaderboard removal failed:', error);
+          alert('Could not remove your row from the shared leaderboard (' + error.message + '). You may need to delete it manually in Supabase.');
+        } else if(!count){
+          alert('No matching leaderboard row was found for "' + sid + '" — if it was created under a different name or ID, delete it manually in Supabase.');
+        }
+      }catch(err){
+        console.error('Leaderboard removal failed:', err);
+        alert('Could not remove your row from the shared leaderboard. Check the browser console, or delete it manually in Supabase.');
+      }
+    }
+  }
+});
+
+// Log form
+document.getElementById('log-add').addEventListener('click', async ()=>{
+  const date = document.getElementById('log-date').value;
+  const subject = document.getElementById('log-subject').value;
+  const topic = document.getElementById('log-topic').value.trim();
+  const hours = document.getElementById('log-hours').value;
+  const confidence = document.getElementById('log-conf').value;
+  const notes = document.getElementById('log-notes').value.trim();
+
+  if(!date || !hours){
+    alert('Please fill in at least Date and Hours.');
+    return;
+  }
+  const hoursNum = parseFloat(hours);
+  if(isNaN(hoursNum) || hoursNum <= 0 || hoursNum > 24){
+    alert('Hours should be a number between 0 and 24.');
+    return;
+  }
+  logEntries.push({
+    id: Date.now().toString() + Math.random().toString(36).slice(2,7),
+    date, subject, topic, hours, confidence, notes
+  });
+  await saveLogEntries();
+  document.getElementById('log-topic').value='';
+  document.getElementById('log-hours').value='';
+  document.getElementById('log-notes').value='';
+  document.getElementById('log-conf').value='';
+  renderAll(true);
+});
+
+// ---------- Backup: export / import / reset ----------
+document.getElementById('export-btn').addEventListener('click', ()=>{
+  readStudentInfo();
+  const backup = {
+    exportedAt: new Date().toISOString(),
+    studentInfo, topicsList, topicState, logEntries
+  };
+  const blob = new Blob([JSON.stringify(backup, null, 2)], { type:'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const namePart = (studentInfo.name || 'study-ledger').trim().replace(/[^a-z0-9]+/gi,'-').toLowerCase();
+  a.href = url;
+  a.download = `${namePart || 'study-ledger'}-backup-${new Date().toISOString().slice(0,10)}.json`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+});
+
+document.getElementById('import-btn').addEventListener('click', ()=>{
+  document.getElementById('import-file').click();
+});
+document.getElementById('import-file').addEventListener('change', async (e)=>{
+  const file = e.target.files[0];
+  e.target.value = '';
+  if(!file) return;
+  if(!confirm('Importing will replace all data currently on this device. Continue?')) return;
+  try{
+    const text = await file.text();
+    const data = JSON.parse(text);
+    if(!data || typeof data !== 'object') throw new Error('Not a valid backup file.');
+    studentInfo = data.studentInfo || {};
+    topicsList = data.topicsList || JSON.parse(JSON.stringify(STARTER_TOPICS));
+    topicState = data.topicState || {};
+    logEntries = Array.isArray(data.logEntries) ? data.logEntries : [];
+    loadYearLevel();
+    applyYearLevel();
+    await saveStudentInfo();
+    await saveTopicsList();
+    await saveTopicState();
+    await saveLogEntries();
+    document.getElementById('f-name').value = studentInfo.name || '';
+    document.getElementById('f-id').value = studentInfo.id || '';
+    document.getElementById('f-section').value = studentInfo.section || '';
+    document.getElementById('f-year').value = studentInfo.year || '';
+    document.getElementById('lb-optin-check').checked = !!studentInfo.shareOnLeaderboard;
+    renderLogSubjectOptions();
+    renderChecklist();
+    renderAll(true);
+    alert('Backup restored.');
+  }catch(err){
+    alert('Could not read that file: ' + (err.message || err));
+  }
+});
+
+document.getElementById('reset-btn').addEventListener('click', async ()=>{
+  if(!confirm('This erases all topics, progress, notes and log entries on this device. This cannot be undone. Continue?')) return;
+  if(!confirm('Are you sure? Consider using Export to back up first.')) return;
+  ['uv-bsa-topics-list','uv-bsa-topic-state','uv-bsa-log-entries','uv-bsa-student-info','uv-bsa-year-level'].forEach(k=>localStorage.removeItem(k));
+  location.reload();
+});
+
+(async function init(){
+  document.getElementById('log-date').valueAsDate = new Date();
+  await loadAll();
+  if(!yearLevel) await showYearPicker(); // first-ever visit — ask before showing anything else
+  renderLogSubjectOptions(); // after loadAll()/showYearPicker() so it reflects the chosen Year Level's subjects
+  if(studentInfo && studentInfo.id) await loginAndSync(); // returning device with a saved ID — pull/merge any progress made elsewhere
+  renderChecklist();
+  renderAll(true);
+  refreshBadgesWithQuizData(); // get quiz badges + leaderboard count right from the start, not just after visiting the Badges tab
+  openAnnouncementModal('initial'); // pops up automatically on load; nudge popup follows after it's dismissed
+})();
+
+// Register service worker so the app is installable ("Add to Home Screen") and works offline once cached.
+if('serviceWorker' in navigator){
+  window.addEventListener('load', ()=>{
+    navigator.serviceWorker.register('sw.js').catch(e=> console.warn('Service worker registration failed:', e));
+  });
+}
+</script>
+</body>
+</html>
